@@ -143,32 +143,6 @@ def solve_equilibrium(eps, s, gamma, p1_init=0.5, p2_init=0.5, tol=1e-6, max_ite
     
     return p1, p2, False
 
-def solve_equilibrium_o(eps, s, gamma, tol=1e-6, max_iter=500):
-    
-    # initial guess
-    p1, p2 = 0.5, 0.5
-    
-    for i in range(max_iter):
-        p1_new = BR1(p2, eps, s, gamma)
-        p2_new = BR2(p1_new, eps, s, gamma)
-        
-        if max(abs(p1_new - p1), abs(p2_new - p2)) < tol:
-            return {
-                "p1": p1_new,
-                "p2": p2_new,
-                "converged": True,
-                "iterations": i
-            }
-        
-        p1, p2 = p1_new, p2_new
-    
-    return {
-        "p1": p1,
-        "p2": p2,
-        "converged": False,
-        "iterations": max_iter
-    }
-
 def check_interior(p1, p2, eps, s, gamma):
     z_1 = z1(p1, eps, s)
     z_2 = z2(p2, s)
@@ -246,3 +220,23 @@ def producer_surplus(p1, p2, eps, s, gamma):
 def total_welfare(p1, p2, eps, s, gamma):
     return consumer_surplus(p1, p2, eps, s, gamma) + \
            producer_surplus(p1, p2, eps, s, gamma)
+
+def plot_comparison(df):
+
+    metrics = ["CS", "PS", "W", "pi1", "pi2"]
+    x = np.arange(len(metrics))
+    width = 0.25
+
+    plt.figure()
+
+    for i, model in enumerate(df.index):
+        values = [df.loc[model, m] for m in metrics]
+        plt.bar(x + i*width, values, width, label=model)
+
+    plt.xticks(x + width, metrics)
+    plt.xlabel("Outcome")
+    plt.ylabel("Value")
+    plt.title("Model comparison")
+    plt.legend()
+
+    plt.show()
