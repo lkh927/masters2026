@@ -10,22 +10,6 @@ from scipy.optimize import minimize_scalar
 # s
 # theta
 
-# CONSUMER PAYOFF #
-def u1(p1, v1, eps):
-    '''The utility function for consumers visiting firm 1. 
-        p1: Price charged by firm 1.
-        v1: Match value with firm 1, which is drawn from a uniform distribution on [0,1].
-        eps: Preference shifter inducing the natural preference for firm 1.'''
-    u1 = v1 + eps - p1
-    return u1
-
-def u2(p2, v2):
-    '''The utility function for consumers visiting firm 2.
-        p2: Price charged by firm 2.
-        v2: Match value with firm 2, which is drawn from a uniform distribution on [0,1].'''
-    u2 = v2 - p2
-    return u2
-
 # RESERVATION VALUES #
 def z1(p1, eps, s):
     '''Reservation value for consumeres who visit firm 2 first. Defines the threshold match value for
@@ -69,7 +53,7 @@ def EU2(p1, p2, eps, s):
     EU2 = z_1*(z_1 + p2) + ((1-p2)**2 - z_1**2)/2
     return EU2
 
-def theta_star(p1, p2, eps, s):
+def theta_star(p1, p2, eps, s, gamma):
     '''The disclosure cutoff for consumers who choose to disclose their preference for firm 1. 
     Disclosing this information comes at cost theta_i, which is the consumers' individual type, 
     capturing their privacy preferences. Consumers with theta_i ≤ theta_star disclose, while consumers
@@ -77,109 +61,80 @@ def theta_star(p1, p2, eps, s):
     p1: Price charged by firm 1.
     p2: Price charged by firm 2.
     eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
-
-    theta = (EU1(p1, p2, eps, s) - EU2(p1, p2, eps, s))/2
+    s: Search cost
+    gamma: The share of naïve consumers, if any.'''
+    theta = gamma + (1-gamma)*((EU1(p1, p2, eps, s) - EU2(p1, p2, eps, s))/2)
     return np.clip(theta, 0, 1)
 
 # DEMAND #
 # interior case relies on positive reservation values and 0 is in [eps-p_1, 1+eps-p_1] and [-p_2, 1-p_2]
-def D1F(p1, p2, eps, s):
-    '''Fresh demand for firm 1: the demand from consumers who buy from firm 1 immediately upon visiting it - so
+def D1(p1, p2, eps, s, gamma):
+    '''Demand for firm 1: Fresh demand + return demand.
+    Fresh demand: the demand from consumers who buy from firm 1 immediately upon visiting it - so
     the sum of consumers who buy immediately when seeing firm 1 first and those who search to firm 1 and then buy
     immediately when seeing firm 2 first.
+    Return demand: the demand from consumers who buy from firm 1  after searching to firm 2 first and then returning 
+    to firm 1.
     p1: Price charged by firm 1.
     p2: Price charged by firm 2.
     eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
-    thetastar = theta_star(p1, p2, eps, s)
+    s: Search cost.
+    gamma: The share of naïve consumers, if any.'''
+    thetastar = theta_star(p1, p2, eps, s, gamma)
     z_1 = z1(p1, eps, s)
     z_2 = z2(p2, s)
     D1F = (1+thetastar)/2 *(1 + eps - p1 - z_2) + (1-thetastar)/2 * ((p2+z_1)*(1 + eps - p1) - z_1**2/2)
-    return D1F
-
-
-def D1R(p1, p2, eps, s):
-    '''Return demand for firm 1: the demand from consumers who buy from firm 1 after searching to firm 2 first
-    and then returning to firm 1.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
-    thetastar = theta_star(p1, p2, eps, s)
-    z_2 = z2(p2, s)
     D1R = (1+thetastar)/2 * (z_2 * (2*p2 + z_2/2))
-    return D1R
-
-def D1(p1, p2, eps, s):
-    '''Total demand for firm 1: the sum of fresh demand and return demand.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
-    D1 = D1F(p1, p2, eps, s) + D1R(p1, p2, eps, s)
+    D1 = D1F + D1R
     return D1
 
-def D2F(p1, p2, eps, s):
-    '''Fresh demand for firm 2: the demand from consumers who buy from firm 2 immediately upon visiting it - so
+def D2(p1, p2, eps, s, gamma):
+    '''Demand for firm 2: Fresh demand + return demand.
+    Fresh demand: the demand from consumers who buy from firm 2 immediately upon visiting it - so
     the sum of consumers who buy immediately when seeing firm 2 first and those who search to firm 2 and then buy
     immediately when seeing firm 1 first.
+    Return demand: the demand from consumers who buy from firm 2  after searching to firm 1 first and then returning 
+    to firm 2.
     p1: Price charged by firm 1.
     p2: Price charged by firm 2.
     eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
-    thetastar = theta_star(p1, p2, eps, s)
+    s: Search cost.
+    gamma: The share of naïve consumers, if any.'''
+    thetastar = theta_star(p1, p2, eps, s, gamma)
     z_1 = z1(p1, eps, s)
     z_2 = z2(p2, s)
     D2F = (1-thetastar)/2 * (1 - z_1 - p2) + (1+thetastar)/2 * ((p1 - eps + z_2) * (1 - p2) - z_2**2/2)
-    return D2F
-
-def D2R(p1, p2, eps, s):
-    '''Return demand for firm 2: the demand from consumers who buy from firm 2 after searching to firm 1 first
-    and then returning to firm 2.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
-    thetastar = theta_star(p1, p2, eps, s)
-    z_1 = z1(p1, eps, s)
     D2R = (1-thetastar)/2 * (2*z_1 * (p1 - eps) + z_1**2/2)
-    return D2R
-
-def D2(p1, p2, eps, s):
-    '''Total demand for firm 2: the sum of fresh demand and return demand.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
-    D2 = D2F(p1, p2, eps, s) + D2R(p1, p2, eps, s)
+    D2 = D2F + D2R
     return D2
 
-def profit1(p1, p2, eps, s):
-    return p1 * D1(p1, p2, eps, s)
+# FIRM PROFITS #
+def profit1(p1, p2, eps, s, gamma):
+    return p1 * D1(p1, p2, eps, s, gamma)
 
-def profit2(p1, p2, eps, s):
-    return p2 * D2(p1, p2, eps, s)
+def profit2(p1, p2, eps, s, gamma):
+    return p2 * D2(p1, p2, eps, s, gamma)
 
-def BR1(p2, eps, s):
-    obj = lambda p1: -profit1(p1, p2, eps, s)
-    
+# BEST RESPONSE FUNCTIONS #
+def BR1(p2, eps, s, gamma):
+    obj = lambda p1: -profit1(p1, p2, eps, s, gamma)
     res = minimize_scalar(obj, bounds=(0, 1+eps), method='bounded')
     return res.x
 
-def BR2(p1, eps, s):
-    obj = lambda p2: -profit2(p1, p2, eps, s)
-    
+def BR2(p1, eps, s, gamma):
+    obj = lambda p2: -profit2(p1, p2, eps, s, gamma)
     res = minimize_scalar(obj, bounds=(0, 1+eps), method='bounded')
     return res.x
 
-def solve_equilibrium(eps, s, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
+
+# EQUILIBRIUM SOLVER #
+def solve_equilibrium(eps, s, gamma, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
     
     p1, p2 = p1_init, p2_init
     
     for i in range(max_iter):
-        p1_new = BR1(p2, eps, s)
-        p2_new = BR2(p1_new, eps, s)
+        p1_new = BR1(p2, eps, s, gamma)
+        p2_new = BR2(p1_new, eps, s, gamma)
         
         if max(abs(p1_new - p1), abs(p2_new - p2)) < tol:
             return p1_new, p2_new, True
@@ -188,14 +143,14 @@ def solve_equilibrium(eps, s, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
     
     return p1, p2, False
 
-def solve_equilibrium_o(eps, s, tol=1e-6, max_iter=500):
+def solve_equilibrium_o(eps, s, gamma, tol=1e-6, max_iter=500):
     
     # initial guess
     p1, p2 = 0.5, 0.5
     
     for i in range(max_iter):
-        p1_new = BR1(p2, eps, s)
-        p2_new = BR2(p1_new, eps, s)
+        p1_new = BR1(p2, eps, s, gamma)
+        p2_new = BR2(p1_new, eps, s, gamma)
         
         if max(abs(p1_new - p1), abs(p2_new - p2)) < tol:
             return {
@@ -207,20 +162,17 @@ def solve_equilibrium_o(eps, s, tol=1e-6, max_iter=500):
         
         p1, p2 = p1_new, p2_new
     
-    theta = theta_star(p1, p2, eps, s)
-
     return {
         "p1": p1,
         "p2": p2,
-        "theta": theta,
         "converged": False,
         "iterations": max_iter
     }
 
-def check_interior(p1, p2, eps, s):
+def check_interior(p1, p2, eps, s, gamma):
     z_1 = z1(p1, eps, s)
     z_2 = z2(p2, s)
-    theta = theta_star(p1, p2, eps, s)
+    theta = theta_star(p1, p2, eps, s, gamma)
     
     cond_z = (z_1 >= 0) and (z_2 >= 0)
     cond_theta = (theta > 0) and (theta < 1)
@@ -234,3 +186,63 @@ def check_interior(p1, p2, eps, s):
         "support_ok": cond_support1 and cond_support2,
         "interior": cond_z and cond_theta and cond_support1 and cond_support2
     }
+
+def compute_equilibrium_path(eps, s, gamma_grid):
+    p1_list, p2_list, theta_list = [], [], []
+    pi1_list, pi2_list = [], []
+    CS_list, PS_list, W_list = [], [], []
+    
+    # warm start
+    p1_init, p2_init = 0.5, 0.5
+    
+    for gamma in gamma_grid:
+        p1, p2, converged = solve_equilibrium(
+            eps, s, gamma,
+            p1_init=p1_init,
+            p2_init=p2_init
+        )
+        
+        # update warm start
+        p1_init, p2_init = p1, p2
+        
+        theta = theta_star(p1, p2, eps, s, gamma)
+
+        pi1 = profit1(p1, p2, eps, s, gamma)
+        pi2 = profit2(p1, p2, eps, s, gamma)
+
+        CS = consumer_surplus(p1, p2, eps, s, gamma)
+        PS = producer_surplus(p1, p2, eps, s, gamma)
+        W  = CS + PS
+        
+        p1_list.append(p1)
+        p2_list.append(p2)
+        pi1_list.append(pi1)
+        pi2_list.append(pi2)
+        theta_list.append(theta)
+        CS_list.append(CS)
+        PS_list.append(PS)
+        W_list.append(W)
+    
+    return np.array(p1_list), np.array(p2_list), np.array(pi1_list), np.array(pi2_list), np.array(theta_list), np.array(CS_list), np.array(PS_list), np.array(W_list)
+
+# WELFARE OUTCOMES #
+def consumer_surplus(p1, p2, eps, s, gamma):
+    theta = theta_star(p1, p2, eps, s, gamma)
+    
+    EU_1 = EU1(p1, p2, eps, s)
+    EU_2 = EU2(p1, p2, eps, s)
+    
+    # expected utility
+    EU = (1 + theta)/2 * EU_1 + (1 - theta)/2 * EU_2
+    
+    # disclosure cost
+    disclosure_cost = theta**2 / 2
+    
+    return EU - disclosure_cost
+
+def producer_surplus(p1, p2, eps, s, gamma):
+    return profit1(p1, p2, eps, s, gamma) + profit2(p1, p2, eps, s, gamma)
+
+def total_welfare(p1, p2, eps, s, gamma):
+    return consumer_surplus(p1, p2, eps, s, gamma) + \
+           producer_surplus(p1, p2, eps, s, gamma)
