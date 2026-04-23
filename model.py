@@ -116,9 +116,9 @@ def Theta_star(p1, p2, eps, s, gamma, mu):
     return Theta
 
 # RANKING PROBABILITIES #
-def ranking_probs(p1, p2, eps, s, mu):
-    thetaA = theta_star_A(p1, p2, eps, s)
-    thetaB = theta_star_B(p1, p2, eps, s)
+def ranking_probs(p1, p2, eps, s, mu, gamma):
+    thetaA = theta_star_A(p1, p2, eps, s, gamma)
+    thetaB = theta_star_B(p1, p2, eps, s, gamma)
     
     non_disclosure = mu*(1-thetaA) + (1-mu)*(1-thetaB)
     
@@ -287,9 +287,9 @@ def consumer_surplus(p1, p2, eps, s, gamma, mu):
     Theta = Theta_star(p1, p2, eps, s, gamma, mu)
     
     EU_1 = mu * EU1_A(p1, p2, eps, s) + (1-mu) * EU1_B(p1, p2, eps, s) 
-    EU_2 = mu * EU1_A(p1, p2, eps, s) + (1-mu) * EU2_B(p1, p2, eps, s)
+    EU_2 = mu * EU2_A(p1, p2, eps, s) + (1-mu) * EU2_B(p1, p2, eps, s)
     
-    pi1first, pi2first = ranking_probs(p1, p2, eps, s, mu)
+    pi1first, pi2first = ranking_probs(p1, p2, eps, s, mu, gamma)
     # expected utility
     EU =  pi1first * EU_1 + pi2first * EU_2
     
@@ -297,6 +297,29 @@ def consumer_surplus(p1, p2, eps, s, gamma, mu):
     disclosure_cost = Theta**2/2
     
     return EU - disclosure_cost
+
+def consumer_surplus(p1, p2, eps, s, gamma, mu):
+    
+    thetaA = theta_star_A(p1, p2, eps, s, gamma)
+    thetaB = theta_star_B(p1, p2, eps, s, gamma)
+    
+    # TYPE A ranking
+    pi1_A = thetaA + 0.5*(1-thetaA)
+    pi2_A = 0.5*(1-thetaA)
+    
+    # TYPE B ranking
+    pi2_B = thetaB + 0.5*(1-thetaB)
+    pi1_B = 0.5*(1-thetaB)
+    
+    # Expected utility by type
+    EU_A = pi1_A * EU1_A(p1, p2, eps, s) + pi2_A * EU2_A(p1, p2, eps, s)
+    EU_B = pi1_B * EU1_B(p1, p2, eps, s) + pi2_B * EU2_B(p1, p2, eps, s)
+    
+    # Privacy costs (uniform distribution)
+    cost_A = thetaA**2 / 2
+    cost_B = thetaB**2 / 2
+    
+    return mu * (EU_A - cost_A) + (1-mu) * (EU_B - cost_B)
 
 def producer_surplus(p1, p2, eps, s, gamma, mu):
     return profit1(p1, p2, eps, s, gamma, mu) + profit2(p1, p2, eps, s, gamma, mu)
@@ -394,7 +417,15 @@ def plot_welfare_comparison(df):
     plt.xticks(x + width, metrics)
     plt.xlabel("Outcome")
     plt.ylabel("Value")
+    plt.ylim(0, 1)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.title("Model comparison")
     plt.legend()
 
     plt.show()
+
+def test_theta_identity(p, eps, s):
+    EUb = EU1_A(p, p, eps, s)   # preferred first
+    EUw = EU2_A(p, p, eps, s)   # non-preferred first
+    
+    return EUb - EUw
