@@ -21,8 +21,7 @@ def z1(p1, eps, s):
         s: Search cost.'''
     z1_A = 1 + eps - p1 - np.sqrt(2*s)
     z1_B = 1 - p1 - np.sqrt(2*s)
-    #return max(z1_A,0), max(z1_B, 0)
-    return z1_A, z1_B
+    return max(z1_A,0), max(z1_B, 0)
 
 def z2(p2, eps, s):
     '''Reservation value for consumeres who visit firm 1 first. Defines the threshold match value for
@@ -32,8 +31,7 @@ def z2(p2, eps, s):
         s: Search cost.'''
     z2_A = 1 - p2 - np.sqrt(2*s)
     z2_B = 1 + eps - p2 - np.sqrt(2*s)
-    #return max(z2_A,0), max(z2_B,0)
-    return z2_A, z2_B
+    return max(z2_A,0), max(z2_B,0)
 
 # EXPECTED UTILITIES AND DISCLOSURE CUTOFF #
 def EU1_A(p1, p2, eps, s):
@@ -82,7 +80,7 @@ def EU2_B(p1, p2, eps, s):
     EU2 = z_1*(z_1 - eps + p2) + ((1 + eps - p2)**2 - z_1**2)/2
     return EU2
 
-def theta_star_A(p1, p2, eps, s, gamma, sigma):
+def theta_star_A(p1, p2, eps, s, gamma):
     '''The disclosure cutoff for consumers who choose to disclose their preference for firm 1. 
     Disclosing this information comes at cost theta_i, which is the consumers' individual type, 
     capturing their privacy preferences. Here for type A.
@@ -90,13 +88,11 @@ def theta_star_A(p1, p2, eps, s, gamma, sigma):
     p2: Price charged by firm 2.
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost
-    gamma: The share of naïve consumers, if any
-    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    theta_star = gamma + (1-gamma)*((EU1_A(p1, p2, eps, s) - EU2_A(p1, p2, eps, s))/2)
-    theta = theta_star/sigma
+    gamma: The share of naïve consumers, if any.'''
+    theta = gamma + (1-gamma)*((EU1_A(p1, p2, eps, s) - EU2_A(p1, p2, eps, s))/2)
     return np.clip(theta, 0, 1)
 
-def theta_star_B(p1, p2, eps, s, gamma, sigma):
+def theta_star_B(p1, p2, eps, s, gamma):
     '''The disclosure cutoff for consumers who choose to disclose their preference for firm 1. 
     Disclosing this information comes at cost theta_i, which is the consumers' individual type, 
     capturing their privacy preferences. Here for type B.
@@ -104,28 +100,27 @@ def theta_star_B(p1, p2, eps, s, gamma, sigma):
     p2: Price charged by firm 2.
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost
-    gamma: The share of naïve consumers, if any.
-    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    theta_star = gamma + (1-gamma)*((EU2_B(p1, p2, eps, s) - EU1_B(p1, p2, eps, s))/2)
-    theta = theta_star/sigma
+    gamma: The share of naïve consumers, if any.'''
+    theta = gamma + (1-gamma)*((EU2_B(p1, p2, eps, s) - EU1_B(p1, p2, eps, s))/2)
     return np.clip(theta, 0, 1)
 
-def Theta_star(p1, p2, eps, s, gamma, mu, sigma):
+def Theta_star(p1, p2, eps, s, gamma, mu):
     '''The overall disclosure cutoff, as a weighted average of the disclosure cutoffs of type A and type B consumers.
     p1: Price charged by firm 1.
     p2: Price charged by firm 2.
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost
     gamma: The share of naïve consumers, if any.
-    mu: The share of type A consumers.
-    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    Theta = mu * theta_star_A(p1, p2, eps, s, gamma, sigma) + (1-mu) * theta_star_B(p1, p2, eps, s, gamma, sigma)
+    mu: The share of type A consumers.'''
+    sigma = 0.1
+    #Theta_old = mu * theta_star_A(p1, p2, eps, s, gamma) + (1-mu) * theta_star_B(p1, p2, eps, s, gamma)
+    Theta = mu * theta_star_A(p1, p2, eps, s, gamma)/sigma + (1-mu) * theta_star_B(p1, p2, eps, s, gamma)/sigma
     return Theta
 
 # RANKING PROBABILITIES #
-def ranking_probs(p1, p2, eps, s, gamma, mu, sigma):
-    thetaA = theta_star_A(p1, p2, eps, s, gamma, sigma)
-    thetaB = theta_star_B(p1, p2, eps, s, gamma, sigma)
+def ranking_probs(p1, p2, eps, s, mu, gamma):
+    thetaA = theta_star_A(p1, p2, eps, s, gamma)
+    thetaB = theta_star_B(p1, p2, eps, s, gamma)
     
     non_disclosure = mu*(1-thetaA) + (1-mu)*(1-thetaB)
     
@@ -136,7 +131,7 @@ def ranking_probs(p1, p2, eps, s, gamma, mu, sigma):
 
 # DEMAND #
 # interior case relies on positive reservation values and 0 is in [eps-p_1, 1+eps-p_1] and [-p_2, 1-p_2]
-def D1(p1, p2, eps, s, gamma, mu, sigma):
+def D1(p1, p2, eps, s, gamma, mu):
     '''Demand for firm 1: Fresh demand + return demand.
     Fresh demand: the demand from consumers who buy from firm 1 immediately upon visiting it - so
     the sum of consumers who buy immediately when seeing firm 1 first and those who search to firm 1 and then buy
@@ -148,10 +143,9 @@ def D1(p1, p2, eps, s, gamma, mu, sigma):
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost.
     gamma: The share of naïve consumers, if any.
-    mu: The share of type A consumers.
-    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    thetastar_A = theta_star_A(p1, p2, eps, s, gamma, sigma)
-    thetastar_B = theta_star_B(p1, p2, eps, s, gamma, sigma)
+    mu: The share of type A consumers.'''
+    thetastar_A = theta_star_A(p1, p2, eps, s, gamma)
+    thetastar_B = theta_star_B(p1, p2, eps, s, gamma)
     z1_A, z1_B = z1(p1, eps, s)
     z2_A, z2_B = z2(p2, eps, s)
 
@@ -168,7 +162,7 @@ def D1(p1, p2, eps, s, gamma, mu, sigma):
     D1 = mu * D1_A + (1-mu) * D1_B
     return D1
 
-def D2(p1, p2, eps, s, gamma, mu, sigma):
+def D2(p1, p2, eps, s, gamma, mu):
     '''Demand for firm 2: Fresh demand + return demand.
     Fresh demand: the demand from consumers who buy from firm 2 immediately upon visiting it - so
     the sum of consumers who buy immediately when seeing firm 2 first and those who search to firm 2 and then buy
@@ -180,10 +174,9 @@ def D2(p1, p2, eps, s, gamma, mu, sigma):
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost.
     gamma: The share of naïve consumers, if any.
-    mu: The share of type A consumers.
-    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    thetastar_A = theta_star_A(p1, p2, eps, s, gamma, sigma)
-    thetastar_B = theta_star_B(p1, p2, eps, s, gamma, sigma)
+    mu: The share of type A consumers.'''
+    thetastar_A = theta_star_A(p1, p2, eps, s, gamma)
+    thetastar_B = theta_star_B(p1, p2, eps, s, gamma)
     z1_A, z1_B = z1(p1, eps, s)
     z2_A, z2_B = z2(p2, eps, s)
 
@@ -201,32 +194,32 @@ def D2(p1, p2, eps, s, gamma, mu, sigma):
     return D2
 
 # FIRM PROFITS #
-def profit1(p1, p2, eps, s, gamma, mu, sigma):
-    return p1 * D1(p1, p2, eps, s, gamma, mu, sigma)
+def profit1(p1, p2, eps, s, gamma, mu):
+    return p1 * D1(p1, p2, eps, s, gamma, mu)
 
-def profit2(p1, p2, eps, s, gamma, mu, sigma):
-    return p2 * D2(p1, p2, eps, s, gamma, mu, sigma)
+def profit2(p1, p2, eps, s, gamma, mu):
+    return p2 * D2(p1, p2, eps, s, gamma, mu)
 
 # BEST RESPONSE FUNCTIONS #
-def BR1(p2, eps, s, gamma, mu, sigma):
-    obj = lambda p1: -profit1(p1, p2, eps, s, gamma, mu, sigma)
+def BR1(p2, eps, s, gamma, mu):
+    obj = lambda p1: -profit1(p1, p2, eps, s, gamma, mu)
     res = minimize_scalar(obj, bounds=(0, 1+eps), method='bounded')
     return res.x
 
-def BR2(p1, eps, s, gamma, mu, sigma):
-    obj = lambda p2: -profit2(p1, p2, eps, s, gamma, mu, sigma)
+def BR2(p1, eps, s, gamma, mu):
+    obj = lambda p2: -profit2(p1, p2, eps, s, gamma, mu)
     res = minimize_scalar(obj, bounds=(0, 1+eps), method='bounded')
     return res.x
 
 
 # EQUILIBRIUM SOLVER #
-def solve_equilibrium(eps, s, gamma, mu, sigma, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
+def solve_equilibrium(eps, s, gamma, mu, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
     
     p1, p2 = p1_init, p2_init
     
     for i in range(max_iter):
-        p1_new = BR1(p2, eps, s, gamma, mu, sigma)
-        p2_new = BR2(p1_new, eps, s, gamma, mu, sigma)
+        p1_new = BR1(p2, eps, s, gamma, mu)
+        p2_new = BR2(p1_new, eps, s, gamma, mu)
         
         if max(abs(p1_new - p1), abs(p2_new - p2)) < tol:
             return p1_new, p2_new, True
@@ -235,12 +228,12 @@ def solve_equilibrium(eps, s, gamma, mu, sigma, p1_init=0.5, p2_init=0.5, tol=1e
     
     return p1, p2, False
 
-def check_interior(p1, p2, eps, s, gamma, mu, sigma):
+def check_interior(p1, p2, eps, s, gamma, mu):
     z1_A, z1_B = z1(p1, eps, s)
     z2_A, z2_B= z2(p2, eps, s)
-    theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma)
+    theta = Theta_star(p1, p2, eps, s, gamma, mu)
     
-    cond_z = (z1_A > 0) and (z2_A > 0) and (z1_B > 0) and (z2_B > 0)
+    cond_z = (z1_A >= 0) and (z2_A >= 0) and (z1_B >= 0) and (z2_B >= 0)
     cond_theta = (theta > 0) and (theta < 1)
     
     cond_support1 = (eps - p1 <= 0) and (1 + eps - p1 >= 0)
@@ -253,7 +246,7 @@ def check_interior(p1, p2, eps, s, gamma, mu, sigma):
         "interior": cond_z and cond_theta and cond_support1 and cond_support2
     }
 
-def compute_equilibrium_path(eps, s, gamma_grid, mu, sigma):
+def compute_equilibrium_path(eps, s, gamma_grid, mu):
     p1_list, p2_list, theta_list = [], [], []
     pi1_list, pi2_list = [], []
     CS_list, PS_list, W_list = [], [], []
@@ -263,7 +256,7 @@ def compute_equilibrium_path(eps, s, gamma_grid, mu, sigma):
     
     for gamma in gamma_grid:
         p1, p2, converged = solve_equilibrium(
-            eps, s, gamma, mu, sigma, 
+            eps, s, gamma, mu,
             p1_init=p1_init,
             p2_init=p2_init
         )
@@ -271,13 +264,13 @@ def compute_equilibrium_path(eps, s, gamma_grid, mu, sigma):
         # update warm start
         p1_init, p2_init = p1, p2
         
-        theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma)
+        theta = Theta_star(p1, p2, eps, s, gamma, mu)
 
-        pi1 = profit1(p1, p2, eps, s, gamma, mu, sigma)
-        pi2 = profit2(p1, p2, eps, s, gamma, mu, sigma)
+        pi1 = profit1(p1, p2, eps, s, gamma, mu)
+        pi2 = profit2(p1, p2, eps, s, gamma, mu)
 
-        CS = consumer_surplus(p1, p2, eps, s, gamma, mu, sigma)
-        PS = producer_surplus(p1, p2, eps, s, gamma, mu, sigma)
+        CS = consumer_surplus(p1, p2, eps, s, gamma, mu)
+        PS = producer_surplus(p1, p2, eps, s, gamma, mu)
         W  = CS + PS
         
         p1_list.append(p1)
@@ -292,11 +285,25 @@ def compute_equilibrium_path(eps, s, gamma_grid, mu, sigma):
     return np.array(p1_list), np.array(p2_list), np.array(pi1_list), np.array(pi2_list), np.array(theta_list), np.array(CS_list), np.array(PS_list), np.array(W_list)
 
 # WELFARE OUTCOMES #
-
-def consumer_surplus(p1, p2, eps, s, gamma, mu, sigma):
+def consumer_surplus(p1, p2, eps, s, gamma, mu):
+    Theta = Theta_star(p1, p2, eps, s, gamma, mu)
     
-    thetaA = theta_star_A(p1, p2, eps, s, gamma, sigma)
-    thetaB = theta_star_B(p1, p2, eps, s, gamma, sigma)
+    EU_1 = mu * EU1_A(p1, p2, eps, s) + (1-mu) * EU1_B(p1, p2, eps, s) 
+    EU_2 = mu * EU2_A(p1, p2, eps, s) + (1-mu) * EU2_B(p1, p2, eps, s)
+    
+    pi1first, pi2first = ranking_probs(p1, p2, eps, s, mu, gamma)
+    # expected utility
+    EU =  pi1first * EU_1 + pi2first * EU_2
+    
+    # disclosure cost
+    disclosure_cost = Theta**2/2
+    
+    return EU - disclosure_cost
+
+def consumer_surplus(p1, p2, eps, s, gamma, mu):
+    
+    thetaA = theta_star_A(p1, p2, eps, s, gamma)
+    thetaB = theta_star_B(p1, p2, eps, s, gamma)
     
     # TYPE A ranking
     pi1_A = thetaA + 0.5*(1-thetaA)
@@ -316,26 +323,26 @@ def consumer_surplus(p1, p2, eps, s, gamma, mu, sigma):
     
     return mu * (EU_A - cost_A) + (1-mu) * (EU_B - cost_B)
 
-def producer_surplus(p1, p2, eps, s, gamma, mu, sigma):
-    return profit1(p1, p2, eps, s, gamma, mu, sigma) + profit2(p1, p2, eps, s, gamma, mu, sigma)
+def producer_surplus(p1, p2, eps, s, gamma, mu):
+    return profit1(p1, p2, eps, s, gamma, mu) + profit2(p1, p2, eps, s, gamma, mu)
 
-def total_welfare(p1, p2, eps, s, gamma, mu, sigma):
-    return consumer_surplus(p1, p2, eps, s, gamma, mu, sigma) + \
-           producer_surplus(p1, p2, eps, s, gamma, mu, sigma)
+def total_welfare(p1, p2, eps, s, gamma, mu):
+    return consumer_surplus(p1, p2, eps, s, gamma, mu) + \
+           producer_surplus(p1, p2, eps, s, gamma, mu)
 
-def equilibrium_path_s_eps(eps_grid, s_grid, gamma, mu, sigma, prev_p1, prev_p2):
+def equilibrium_path_s_eps(eps_grid, s_grid, gamma, mu, prev_p1, prev_p2):
     results = []
     for eps in eps_grid:
         for s in s_grid:
             try:
-                p1, p2, converged = solve_equilibrium(eps, s, gamma, mu, sigma, p1_init=prev_p1, p2_init=prev_p2)
+                p1, p2, converged = solve_equilibrium(eps, s, gamma, mu,  p1_init=prev_p1, p2_init=prev_p2)
 
                 # update warm start
                 prev_p1, prev_p2 = p1, p2
 
                 # compute objects
-                Theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma)
-                interior = check_interior(p1, p2, eps, s, gamma, mu, sigma)['interior']
+                Theta = Theta_star(p1, p2, eps, s, gamma, mu)
+                interior = check_interior(p1, p2, eps, s, gamma, mu)['interior']
 
                 results.append({"eps": eps, "s": s, "p1": p1, "p2": p2, "Theta": Theta,
                                  "interior": interior, "converged": converged})
@@ -418,3 +425,9 @@ def plot_welfare_comparison(df):
     plt.legend()
 
     plt.show()
+
+def test_theta_identity(p, eps, s):
+    EUb = EU1_A(p, p, eps, s)   # preferred first
+    EUw = EU2_A(p, p, eps, s)   # non-preferred first
+    
+    return EUb - EUw

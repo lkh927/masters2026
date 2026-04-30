@@ -25,61 +25,42 @@ def EU_an(eps, s, p):
     EU_W = 1 + 1/2 * eps**2 + s - p + eps - np.sqrt(2*s)*(1+eps)
     return EU_B, EU_W
 
-def theta_num(eps, s, p, sigma):
+def theta_num(eps, s, p):
     EUB, EUW = EU_num(eps, s, p)
-    theta_star = (EUB - EUW)/2
-    theta = theta_star/sigma
-    return np.clip(theta, 0,1)
+    theta = (EUB - EUW)/2
+    return theta
 
-def theta_an(eps, s, sigma):
-    theta_star = eps*np.sqrt(2*s) - eps/2
-    theta = theta_star/sigma
+def theta_an(eps, s):
+    theta = eps*np.sqrt(2*s) - eps/2
     return np.clip(theta,0,1)
 
-def D(eps, s, p, sigma):
+def D(eps, s, p):
     zb = z_b(eps, s, p)
     zw = z_w(s, p)
-    th = theta_an(eps, s, sigma)
+    th = theta_an(eps, s)
 
-    D_B = (1 + th)/2 * (1 + eps - p - zw*(1 - 2*p -zw/2)) \
-        + (1 - th)/2 * ((1 + eps - p)*(p + zb) - zb**2/2)
-    D_W = (1 - th)/2 * (1 - zb - p + 2*zb*(p - eps) + zb**2/2) \
-        + (1 + th)/2 * ((p - eps + zw)*(1 - p) - zw**2/2)
+    D_B = 1/2*(1 + th) * (1 + eps - p - zw*(1-2*p-1/2*zw))
+    D_W = 1/2*(1 - th) * ((1 + eps - p)*(p + zb) - 1/2*zb**2)
     D = 1/2 * (D_B + D_W)
     return D
 
-def profit(eps, s, p, sigma):
-    Demand = D(eps, s, p, sigma)
+def profit(eps, s, p):
+    Demand = D(eps, s, p)
     return p*Demand
 
-def BR(eps, s, sigma):
-    obj = lambda p: -profit(eps, s, p, sigma)
+def price(eps, s):
+    obj = lambda p: -profit(eps, s, p)
     res = minimize_scalar(obj, bounds=(0.0, 1+eps), method='bounded')
     return res.x
 
-def solve_equilibrium(eps, s, sigma, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
-    
-    p1, p2 = p1_init, p2_init
-    
-    for i in range(max_iter):
-        p1_new = BR(eps, s, sigma)
-        p2_new = BR(eps, s, sigma)
-        
-        if max(abs(p1_new - p1), abs(p2_new - p2)) < tol:
-            return p1_new, p2_new, True
-        
-        p1, p2 = p1_new, p2_new
-    
-    return p1, p2, False
-
-def equilibrium_path_s_eps(eps_grid, s_grid, sigma):
+def equilibrium_path_s_eps(eps_grid, s_grid):
     results = []
     for eps in eps_grid:
         for s in s_grid:
-            p = BR(eps, s, sigma)
+            p = price(eps, s)
 
             # compute objects
-            the = theta_an(eps, s, sigma)
+            the = theta_an(eps, s)
 
             results.append({"eps": eps, "s": s, "p1": p, "p2": p, "theta": the})
     return results
