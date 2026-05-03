@@ -21,8 +21,7 @@ def z1(p1, eps, s):
         s: Search cost.'''
     z1_A = 1 + eps - p1 - np.sqrt(2*s)
     z1_B = 1 - p1 - np.sqrt(2*s)
-    #return max(z1_A,0), max(z1_B, 0)
-    return z1_A, z1_B
+    return max(z1_A,0), max(z1_B, 0)
 
 def z2(p2, eps, s):
     '''Reservation value for consumeres who visit firm 1 first. Defines the threshold match value for
@@ -32,8 +31,7 @@ def z2(p2, eps, s):
         s: Search cost.'''
     z2_A = 1 - p2 - np.sqrt(2*s)
     z2_B = 1 + eps - p2 - np.sqrt(2*s)
-    #return max(z2_A,0), max(z2_B,0)
-    return z2_A, z2_B
+    return max(z2_A,0), max(z2_B,0)
 
 # EXPECTED UTILITIES AND DISCLOSURE CUTOFF #
 def EU1_A(p1, p2, eps, s):
