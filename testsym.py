@@ -7,11 +7,11 @@ from scipy.optimize import minimize_scalar
 
 def z_b(eps, s, p):
     z_b = 1 + eps - p - np.sqrt(2*s)
-    return z_b
+    return max(z_b, 0)
 
 def z_w(s, p):
     z_w = 1 - p - np.sqrt(2*s)
-    return z_w
+    return max(z_w,0)
 
 def EU_num(eps, s, p):
     zw = z_w(s, p)

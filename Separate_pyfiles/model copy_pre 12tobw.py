@@ -19,9 +19,9 @@ def z1(p1, eps, s):
         p1: Price charged by firm 1.
         eps: Preference shifter inducing the natural preference for firm 1.
         s: Search cost.'''
-    z1_b = 1 + eps - p1 - np.sqrt(2*s)
-    z1_w = 1 - p1 - np.sqrt(2*s)
-    return z1_b, z1_w
+    z1_A = 1 + eps - p1 - np.sqrt(2*s)
+    z1_B = 1 - p1 - np.sqrt(2*s)
+    return max(z1_A,0), max(z1_B, 0)
 
 def z2(p2, eps, s):
     '''Reservation value for consumeres who visit firm 1 first. Defines the threshold match value for
@@ -29,12 +29,12 @@ def z2(p2, eps, s):
         p2: Price charged by firm 2.
         eps: Preference shifter inducing the natural preference for firm 2.
         s: Search cost.'''
-    z2_w = 1 - p2 - np.sqrt(2*s)
-    z2_b = 1 + eps - p2 - np.sqrt(2*s)
-    return z2_w, z2_b
+    z2_A = 1 - p2 - np.sqrt(2*s)
+    z2_B = 1 + eps - p2 - np.sqrt(2*s)
+    return max(z2_A,0), max(z2_B,0)
 
 # EXPECTED UTILITIES AND DISCLOSURE CUTOFF #
-def EU1_B(p1, p2, eps, s):
+def EU1_A(p1, p2, eps, s):
     '''Expected utility of visiting firm 1 first, given that the first visit is free.
     EU1 = E[max{u1, z2, 0}]. Here for type A, who prefers firm 1.
     p1: Price charged by firm 1.
@@ -42,13 +42,10 @@ def EU1_B(p1, p2, eps, s):
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost.'''
     z_2, _ = z2(p2, eps, s)
-    if z_2 > 0:
-        EU1 = z_2*(z_2 - eps + p1) + ((1 + eps - p1)**2 - z_2**2)/2
-    else:
-         EU1 = (1 + eps - p1)**2/2
+    EU1 = z_2*(z_2 - eps + p1) + ((1 + eps - p1)**2 - z_2**2)/2
     return EU1
 
-def EU1_W(p1, p2, eps, s):
+def EU1_B(p1, p2, eps, s):
     '''Expected utility of visiting firm 1 first, given that the first visit is free.
     EU1 = E[max{u1, z2, 0}]. Here for type B, who prefers firm 2.
     p1: Price charged by firm 1.
@@ -56,13 +53,10 @@ def EU1_W(p1, p2, eps, s):
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost.'''
     _, z_2 = z2(p2, eps, s)
-    if z_2 > 0:
-        EU1 = z_2*(z_2 + p1) + ((1 - p1)**2 - z_2**2)/2
-    else:
-         EU1 = (1 - p1)**2/2
+    EU1 = z_2*(z_2 + p1) + ((1 - p1)**2 - z_2**2)/2
     return EU1
 
-def EU2_W(p1, p2, eps, s):
+def EU2_A(p1, p2, eps, s):
     '''Expected utility of visiting firm 2 first, given that the first visit is free.
     EU2 = E[max{u2, z1, 0}]. Visiting firm 2 first happens with probability 0 if consumers decide to disclose
     and with probaiblity 0 if they do not. Here for type A.
@@ -71,10 +65,7 @@ def EU2_W(p1, p2, eps, s):
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost.'''
     z_1, _ = z1(p1, eps, s)
-    if z_1 > 0:
-        EU2 = z_1*(z_1 + p2) + ((1-p2)**2 - z_1**2)/2
-    else:
-        EU2 = (1 - p2)**2/2
+    EU2 = z_1*(z_1 + p2) + ((1-p2)**2 - z_1**2)/2
     return EU2
 
 def EU2_B(p1, p2, eps, s):
@@ -86,13 +77,10 @@ def EU2_B(p1, p2, eps, s):
     eps: Preference shifter inducing the natural preference for firm 1.
     s: Search cost.'''
     _, z_1 = z1(p1, eps, s)
-    if z_1 > 0:
-        EU2 = z_1*(z_1 - eps + p2) + ((1 + eps - p2)**2 - z_1**2)/2
-    else:
-        EU2 = (1 + eps - p2)**2/2
+    EU2 = z_1*(z_1 - eps + p2) + ((1 + eps - p2)**2 - z_1**2)/2
     return EU2
 
-def theta_star_1(p1, p2, eps, s, gamma, sigma):
+def theta_star_A(p1, p2, eps, s, gamma, sigma):
     '''The disclosure cutoff for consumers who choose to disclose their preference for firm 1. 
     Disclosing this information comes at cost theta_i, which is the consumers' individual type, 
     capturing their privacy preferences. Here for type A.
@@ -102,11 +90,11 @@ def theta_star_1(p1, p2, eps, s, gamma, sigma):
     s: Search cost
     gamma: The share of naïve consumers, if any
     sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    theta_star = gamma + (1-gamma)*((EU1_B(p1, p2, eps, s) - EU2_W(p1, p2, eps, s))/2)
+    theta_star = gamma + (1-gamma)*((EU1_A(p1, p2, eps, s) - EU2_A(p1, p2, eps, s))/2)
     theta = theta_star/sigma
     return np.clip(theta, 0, 1)
 
-def theta_star_2(p1, p2, eps, s, gamma, sigma):
+def theta_star_B(p1, p2, eps, s, gamma, sigma):
     '''The disclosure cutoff for consumers who choose to disclose their preference for firm 1. 
     Disclosing this information comes at cost theta_i, which is the consumers' individual type, 
     capturing their privacy preferences. Here for type B.
@@ -116,7 +104,7 @@ def theta_star_2(p1, p2, eps, s, gamma, sigma):
     s: Search cost
     gamma: The share of naïve consumers, if any.
     sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    theta_star = gamma + (1-gamma)*((EU2_B(p1, p2, eps, s) - EU1_W(p1, p2, eps, s))/2)
+    theta_star = gamma + (1-gamma)*((EU2_B(p1, p2, eps, s) - EU1_B(p1, p2, eps, s))/2)
     theta = theta_star/sigma
     return np.clip(theta, 0, 1)
 
@@ -129,140 +117,86 @@ def Theta_star(p1, p2, eps, s, gamma, mu, sigma):
     gamma: The share of naïve consumers, if any.
     mu: The share of type A consumers.
     sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    Theta = mu * theta_star_1(p1, p2, eps, s, gamma, sigma) + (1-mu) * theta_star_2(p1, p2, eps, s, gamma, sigma)
+    Theta = mu * theta_star_A(p1, p2, eps, s, gamma, sigma) + (1-mu) * theta_star_B(p1, p2, eps, s, gamma, sigma)
     return Theta
 
 # RANKING PROBABILITIES #
 def ranking_probs(p1, p2, eps, s, gamma, mu, sigma):
-    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
-    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
+    thetaA = theta_star_A(p1, p2, eps, s, gamma, sigma)
+    thetaB = theta_star_B(p1, p2, eps, s, gamma, sigma)
     
-    non_disclosure = mu*(1-theta1) + (1-mu)*(1-theta2)
+    non_disclosure = mu*(1-thetaA) + (1-mu)*(1-thetaB)
     
-    R1_first = mu*theta1 + 0.5 * non_disclosure
-    R2_first = (1-mu)*theta2 + 0.5 * non_disclosure
-
-    return R1_first, R2_first
+    pi1_first = mu*thetaA + 0.5 * non_disclosure
+    pi2_first = (1-mu)*thetaB + 0.5 * non_disclosure
+    
+    return pi1_first, pi2_first
 
 # DEMAND #
 # interior case relies on positive reservation values and 0 is in [eps-p_1, 1+eps-p_1] and [-p_2, 1-p_2]
-
-def D1_F(p1, p2, eps, s, gamma, mu, sigma):
-    thetastar_1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
-    thetastar_2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
-    z1_b, z1_w = z1(p1, eps, s)
-    z2_w, z2_b = z2(p2, eps, s)
-
-    # Firm 1 is preferred: D1_F = DBF_1 (preferred firm, F=1)
-    if z1_b > 0 and z2_w > 0: # reg A (active search)
-        DBF_1 = (1+thetastar_1)/2 *(1 + eps - p1 - z2_w) \
-        + (1-thetastar_1)/2 * ((p2+z1_b)*(1 + eps - p1) - z1_b**2/2)
-    elif z1_b > 0 and z2_w <= 0: # reg AN (no search after good match)
-        DBF_1 = (1+thetastar_1)/2 *(1 + eps - p1) \
-        + (1-thetastar_1)/2 * ((p2+z1_b)*(1 + eps - p1) - z1_b**2/2)
-    elif z1_b <= 0 and z2_w > 0: # reg NA (no search after bad match)
-        DBF_1 = (1+thetastar_1)/2 *(1 + eps - p1 - z2_w) 
-    elif z1_b <=0 and z2_w <= 0: # reg N (no search)
-        DBF_1 = (1+thetastar_1)/2 *(1 + eps - p1)
-
-    # Firm 2 is preferred: D1_F = DWF_1 (non-preferred firm, F=1)
-    if z1_w > 0 and z2_b > 0: # reg A (active search)
-        DWF_1 = (1-thetastar_2)/2 * (1 - z2_b - p1) \
-        + (1+thetastar_2)/2 * ((p2 - eps + z1_w)*(1 - p1) - z1_w**2/2)
-    elif z1_w <=0 and z2_b > 0: # reg AN (no search after good match)
-        DWF_1 = (1-thetastar_2)/2 * (1 - z2_b - p1)
-    elif z1_w > 0 and z2_b <= 0: # reg NA (no search after bad match)
-        DWF_1 = (1-thetastar_2)/2 * (1 - p1) \
-        + (1+thetastar_2)/2 * ((p2 - eps + z1_w)*(1 - p1) - z1_w**2/2)
-    elif z1_w <= 0 and z2_b <= 0: # reg N (no search)
-        DWF_1 = (1-thetastar_2)/2 * (1 - p1)
-
-    D1_F = mu * DBF_1 + (1-mu) * DWF_1
-    return D1_F
-
-def D1_R(p1, p2, eps, s, gamma, mu, sigma):
-    thetastar_1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
-    thetastar_2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
-    z2_w, z2_b = z2(p2, eps, s)
-
-    # Firm 1 is preferred:
-    if z2_w > 0: # reg A or AN (active search after good match)
-        DBR_1 = (1+thetastar_1)/2 * (2*z2_w*p2 + z2_w**2/2)
-    else: # reg NA or N (no search after good match)
-        DBR_1 = 0
-    
-    # Firm 2 is preferred:
-    if z2_b > 0: # reg A or AN (active search after bad match)
-        DWR_1 = (1-thetastar_2)/2 * (2*z2_b*(p2 - eps) + z2_b**2/2)
-    else: # reg NA or N (no search after bad match)
-        DWR_1 = 0
-    
-    D1_R = mu * DBR_1 + (1-mu) * DWR_1
-    return D1_R
-
 def D1(p1, p2, eps, s, gamma, mu, sigma):
-    D1F = D1_F(p1, p2, eps, s, gamma, mu, sigma)
-    D1R = D1_R(p1, p2, eps, s, gamma, mu, sigma)
-    return D1F + D1R
+    '''Demand for firm 1: Fresh demand + return demand.
+    Fresh demand: the demand from consumers who buy from firm 1 immediately upon visiting it - so
+    the sum of consumers who buy immediately when seeing firm 1 first and those who search to firm 1 and then buy
+    immediately when seeing firm 2 first.
+    Return demand: the demand from consumers who buy from firm 1  after searching to firm 2 first and then returning 
+    to firm 1.
+    p1: Price charged by firm 1.
+    p2: Price charged by firm 2.
+    eps: Preference shifter inducing the natural preference for firm 1.
+    s: Search cost.
+    gamma: The share of naïve consumers, if any.
+    mu: The share of type A consumers.
+    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
+    thetastar_A = theta_star_A(p1, p2, eps, s, gamma, sigma)
+    thetastar_B = theta_star_B(p1, p2, eps, s, gamma, sigma)
+    z1_A, z1_B = z1(p1, eps, s)
+    z2_A, z2_B = z2(p2, eps, s)
 
-def D2_F(p1, p2, eps, s, gamma, mu, sigma):
-    thetastar_1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
-    thetastar_2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
-    z1_b, z1_w = z1(p1, eps, s)
-    z2_w, z2_b = z2(p2, eps, s)
+    D1F_A = (1+thetastar_A)/2 *(1 + eps - p1 - z2_A) \
+        + (1-thetastar_A)/2 * ((p2+z1_A)*(1 + eps - p1) - z1_A**2/2)
+    D1R_A = (1+thetastar_A)/2 * (z2_A * (2*p2 + z2_A/2))
+    D1_A = D1F_A + D1R_A
 
-    # Firm 1 is preferred: D2_F = DWF_2 (non-preferred firm, F=2)
-    if z1_b > 0 and z2_w > 0: # reg A (active search)
-        DWF_2 = (1-thetastar_1)/2 *(1 - z1_b - p2) \
-        + (1+thetastar_1)/2 * ((p1 - eps + z2_w)*(1 - p2) - z2_w**2/2)
-    elif z1_b > 0 and z2_w <= 0: # reg AN (no search after good match)
-        DWF_2 = (1-thetastar_1)/2 *(1 - z1_b - p2)
-    elif z1_b <= 0 and z2_w > 0: # reg NA (no search after bad match)
-        DWF_2 = (1-thetastar_1)/2 *(1 - p2) \
-        + (1+thetastar_1)/2 * ((p1 - eps + z2_w)*(1 - p2) - z2_w**2/2)
-    elif z1_b <=0 and z2_w <= 0: # reg N (no search)
-        DWF_2 = (1-thetastar_1)/2 * (1 - p2)
-    
-    # Firm 2 is prererred: D2_F = DBF_2 (preferred firm, F=2)
-    if z1_w > 0 and z2_b > 0: # reg A (active search)
-        DBF_2 = (1+thetastar_2)/2 * (1 + eps - p2 - z1_w) \
-        + (1-thetastar_2)/2 * ((p1+z2_b)*(1 + eps - p2) - z2_b**2/2)
-    elif z1_w <=0 and z2_b > 0: # reg AN (no search after good match)
-        DBF_2 = (1+thetastar_2)/2 * (1 + eps - p2) \
-        + (1-thetastar_2)/2 * ((p1+z2_b)*(1 + eps - p2) - z2_b**2/2)
-    elif z1_w > 0 and z2_b <= 0: # reg NA (no search after bad match)
-        DBF_2 = (1+thetastar_2)/2 * (1 + eps - p2 - z1_w)
-    elif z1_w <= 0 and z2_b <= 0: # reg N (no search)
-        DBF_2 = (1+thetastar_2)/2 * (1 + eps - p2)
-    
-    D2_F = mu * DWF_2 + (1-mu) * DBF_2
-    return D2_F
+    D1F_B = (1-thetastar_B)/2 * (1 - z2_B - p1) \
+        + (1+thetastar_B)/2 * ((p2 - eps + z1_B)*(1 - p1) - z1_B**2/2)
+    D1R_B =  (1-thetastar_B)/2 * (2*z2_B*(p2 - eps) + z2_B**2/2)
+    D1_B = D1F_B + D1R_B
 
-def D2_R(p1, p2, eps, s, gamma, mu, sigma):
-    thetastar_1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
-    thetastar_2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
-    z1_b, z1_w = z1(p1, eps, s)
-
-    # Firm 1 is preferred:
-    if z1_b > 0: # reg A or AN (active search after bad match)
-        DWR_2 = (1-thetastar_1)/2 * (2*z1_b*(p1 - eps) + z1_b**2/2)
-    else: # reg NA or N (no search after bad match)
-        DWR_2 = 0
-
-    # Firm 2 is preferred:
-    if z1_w > 0: # reg A or NA (active search after good match)
-        DBR_2 = (1+thetastar_2)/2 * (2*z1_w*p1 + z1_w**2/2)
-    else: # reg AN or N (no search after good match)
-        DBR_2 = 0
-    
-    D2_R = mu * DWR_2 + (1-mu) * DBR_2
-    return D2_R
+    D1 = mu * D1_A + (1-mu) * D1_B
+    return D1
 
 def D2(p1, p2, eps, s, gamma, mu, sigma):
-    D2F = D2_F(p1, p2, eps, s, gamma, mu, sigma)
-    D2R = D2_R(p1, p2, eps, s, gamma, mu, sigma)
-    
-    return D2F + D2R
+    '''Demand for firm 2: Fresh demand + return demand.
+    Fresh demand: the demand from consumers who buy from firm 2 immediately upon visiting it - so
+    the sum of consumers who buy immediately when seeing firm 2 first and those who search to firm 2 and then buy
+    immediately when seeing firm 1 first.
+    Return demand: the demand from consumers who buy from firm 2  after searching to firm 1 first and then returning
+    to firm 2.
+    p1: Price charged by firm 1.
+    p2: Price charged by firm 2.
+    eps: Preference shifter inducing the natural preference for firm 1.
+    s: Search cost.
+    gamma: The share of naïve consumers, if any.
+    mu: The share of type A consumers.
+    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
+    thetastar_A = theta_star_A(p1, p2, eps, s, gamma, sigma)
+    thetastar_B = theta_star_B(p1, p2, eps, s, gamma, sigma)
+    z1_A, z1_B = z1(p1, eps, s)
+    z2_A, z2_B = z2(p2, eps, s)
+
+    D2F_A = (1-thetastar_A)/2 * (1 - z1_A - p2) \
+    + (1+thetastar_A)/2 * ((p1 - eps + z2_A)*(1 - p2) - z2_A**2/2)
+    D2R_A = (1-thetastar_A)/2 * (2*z1_A*(p1 - eps) + z1_A**2/2)
+    D2_A = D2F_A + D2R_A
+
+    D2F_B = (1+thetastar_B)/2 * (1 + eps - p2 - z1_B) \
+        + (1-thetastar_B)/2 * ((p1+z2_B)*(1 + eps - p2) - z2_B**2/2)
+    D2R_B = (1+thetastar_B)/2 * (z1_B * (2*p1 + z1_B/2))
+    D2_B = D2F_B + D2R_B
+
+    D2 = mu * D2_A + (1-mu) * D2_B
+    return D2
 
 # FIRM PROFITS #
 def profit1(p1, p2, eps, s, gamma, mu, sigma):
@@ -272,27 +206,16 @@ def profit2(p1, p2, eps, s, gamma, mu, sigma):
     return p2 * D2(p1, p2, eps, s, gamma, mu, sigma)
 
 # BEST RESPONSE FUNCTIONS #
-def BR1(p2, eps, s, gamma, mu, sigma, n=200):
-    grid = np.linspace(0, 1+eps, n)
-    profits = [profit1(p, p2, eps, s, gamma, mu, sigma) for p in grid]
-    p0 = grid[np.argmax(profits)]
-
-    res = minimize_scalar(
-        lambda p: -profit1(p, p2, eps, s, gamma, mu, sigma),
-        bounds = (max(0, p0-0.1), min(1+eps, p0+0.1)),
-        method='bounded')
+def BR1(p2, eps, s, gamma, mu, sigma):
+    obj = lambda p1: -profit1(p1, p2, eps, s, gamma, mu, sigma)
+    res = minimize_scalar(obj, bounds=(0, 1+eps), method='bounded')
     return res.x
 
-def BR2(p1, eps, s, gamma, mu, sigma, n=200):
-    grid = np.linspace(0, 1+eps, n)
-    profits = [profit1(p, p1, eps, s, gamma, mu, sigma) for p in grid]
-    p0 = grid[np.argmax(profits)]
-
-    res = minimize_scalar(
-        lambda p: -profit2(p1, p, eps, s, gamma, mu, sigma),
-        bounds = (max(0, p0-0.1), min(1+eps, p0+0.1)),
-        method='bounded')
+def BR2(p1, eps, s, gamma, mu, sigma):
+    obj = lambda p2: -profit2(p1, p2, eps, s, gamma, mu, sigma)
+    res = minimize_scalar(obj, bounds=(0, 1+eps), method='bounded')
     return res.x
+
 
 # EQUILIBRIUM SOLVER #
 def solve_equilibrium(eps, s, gamma, mu, sigma, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
@@ -370,24 +293,24 @@ def compute_equilibrium_path(eps, s, gamma_grid, mu, sigma):
 
 def consumer_surplus(p1, p2, eps, s, gamma, mu, sigma):
     
-    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
-    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
+    thetaA = theta_star_A(p1, p2, eps, s, gamma, sigma)
+    thetaB = theta_star_B(p1, p2, eps, s, gamma, sigma)
     
     # TYPE A ranking
-    pi1_B = theta1 + 0.5*(1-theta1)
-    pi2_W = 0.5*(1-theta1)
+    pi1_A = thetaA + 0.5*(1-thetaA)
+    pi2_A = 0.5*(1-thetaA)
     
     # TYPE B ranking
-    pi2_B = theta2 + 0.5*(1-theta2)
-    pi1_W = 0.5*(1-theta2)
+    pi2_B = thetaB + 0.5*(1-thetaB)
+    pi1_B = 0.5*(1-thetaB)
     
     # Expected utility by type
-    EU_A = pi1_B * EU1_B(p1, p2, eps, s) + pi2_W * EU2_W(p1, p2, eps, s)
-    EU_B = pi1_W * EU1_W(p1, p2, eps, s) + pi2_B * EU2_B(p1, p2, eps, s)
+    EU_A = pi1_A * EU1_A(p1, p2, eps, s) + pi2_A * EU2_A(p1, p2, eps, s)
+    EU_B = pi1_B * EU1_B(p1, p2, eps, s) + pi2_B * EU2_B(p1, p2, eps, s)
     
     # Privacy costs (uniform distribution)
-    cost_A = theta1**2 / 2
-    cost_B = theta2**2 / 2
+    cost_A = thetaA**2 / 2
+    cost_B = thetaB**2 / 2
     
     return mu * (EU_A - cost_A) + (1-mu) * (EU_B - cost_B)
 
@@ -492,79 +415,4 @@ def plot_welfare_comparison(df):
     plt.title("Model comparison")
     plt.legend()
 
-    plt.show()
-
-def classify_regime(p1, p2, eps, s):
-    z1_b, z1_w = z1(p1, eps, s)
-    z2_w, z2_b = z2(p2, eps, s)
-    
-    # Use type A logic (sufficient due to symmetry between z1_b, z2_b and z1_w, z2_w)
-    if z2_w > 0 and z1_b > 0:
-        return "A"      # full search
-    elif z2_w <= 0 and z1_b > 0:
-        return "AN"     # no search after good match
-    elif z2_w > 0 and z1_b <= 0:
-        return "NA"     # no search after bad match
-    else:
-        return "N"      # no search at all
-    
-def regime_map(gamma, mu, sigma):
-    results = []
-    
-    p1_init, p2_init = 0.5, 0.5  # warm start
-    eps_grid = np.linspace(0.0, 0.5, 15)
-    s_grid = np.linspace(0.0001, 0.2, 15)
-    
-    for eps in eps_grid:
-        for s in s_grid:
-            try:
-                p1, p2, converged = solve_equilibrium(
-                    eps, s, gamma, mu, sigma,
-                    p1_init=p1_init,
-                    p2_init=p2_init
-                )
-                
-                # update warm start
-                p1_init, p2_init = p1, p2
-                
-                regime = classify_regime(p1, p2, eps, s)
-                
-                results.append({
-                    "eps": eps,
-                    "s": s,
-                    "p1": p1,
-                    "p2": p2,
-                    "regime": regime,
-                    "converged": converged
-                })
-                
-            except Exception:
-                results.append({
-                    "eps": eps,
-                    "s": s,
-                    "p1": np.nan,
-                    "p2": np.nan,
-                    "regime": "fail",
-                    "converged": False
-                })
-    
-    return pd.DataFrame(results)
-
-def plot_regime_map(df, eps_grid, s_grid):
-    regime_dict = {"A": 0, "AN": 1, "NA": 2, "N": 3, "fail": 4}
-    
-    df["regime_code"] = df["regime"].map(regime_dict)
-    
-    Z = df.pivot(index="s", columns="eps", values="regime_code")
-    
-    plt.figure(figsize=(8,6))
-    plt.contourf(eps_grid, s_grid, Z.values, levels=5)
-    
-    cbar = plt.colorbar()
-    cbar.set_ticks([0,1,2,3,4])
-    cbar.set_ticklabels(["A", "AN", "NA", "N", "fail"])
-    
-    plt.xlabel("epsilon")
-    plt.ylabel("search cost s")
-    plt.title("Equilibrium Regimes")
     plt.show()
