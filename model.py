@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from scipy.optimize import minimize_scalar
 import matplotlib as mpl
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 mpl.rcParams.update({
     "font.size": 11,
@@ -414,15 +415,33 @@ def classify_regime(p1, p2, eps, s):
     z1_b, z1_w = z1(p1, eps, s)
     z2_w, z2_b = z2(p2, eps, s)
     
-    # Use type A logic (sufficient due to symmetry between z1_b, z2_b and z1_w, z2_w)
+    # for consumers who prefer firm 1:
     if z2_w > 0 and z1_b > 0:
-        return "A"      # full search
+        regime_1 = "A"      # full search
     elif z2_w <= 0 and z1_b > 0:
-        return "AN"     # no search after good match
+        regime_1 = "AN"     # no search after good match
     elif z2_w > 0 and z1_b <= 0:
-        return "NA"     # no search after bad match
+        regime_1 = "NA"     # no search after bad match
     else:
-        return "N"      # no search at all
+        regime_1 = "N"      # no search at all
+
+    # for consumers who prefer firm 2:
+    if z1_w > 0 and z2_b > 0:
+        regime_2 = "A"      # full search
+    elif z1_w <= 0 and z2_b > 0:
+        regime_2 = "AN"
+    elif z1_w > 0 and z2_b <= 0:
+        regime_2 = "NA"
+    else:
+        regime_2 = "N"
+    
+    # aggregate regime
+    if regime_1 == regime_2:
+        regime = regime_1
+    else:
+        regime = f"{regime_1}/{regime_2}"
+
+    return regime
 
 
 def equilibrium_path_s_eps(eps_grid, s_grid, gamma, mu, sigma, prev_p1=0.5, prev_p2=0.5):
@@ -488,34 +507,36 @@ def plot_colorblock(df, eps_grid, s_grid):
     plt.tight_layout()
     plt.show()
 
-def find_mixed_regions(df_regime):
-    mixed = df_regime[df_regime["regime"].isin(["AN"])]
-    return mixed[["eps", "s", "p1", "p2"]]
-
 def plot_regime_map(df, eps_grid, s_grid):
+    regime_order = ["A", "A/AN", "A/NA", "A/N", "AN", "AN/A", "AN/NA", "AN/N", "NA", "NA/A", "NA/AN", "NA/N", "N/A", "N/AN", "N/NA", "N"]
+    
+    # collect all regimes that actually appear
+    unique_regimes = [r for r in regime_order if r in df["regime"].unique()]
+    # assign integer code dynamically
+    regime_dict = {reg: i for i, reg in enumerate(unique_regimes)}
 
-    regime_dict = {"A": 0, "AN": 1, "NA": 2, "N": 3}
+    # map to integers
+    Z = df.assign(regime_code=df["regime"].map(regime_dict)
+                  ).pivot(index="s", columns="eps", values="regime_code")
 
-    Z = df.assign(regime_code=df["regime"].map(regime_dict)) \
-          .pivot(index="s", columns="eps", values="regime_code")
+    colors = plt.cm.Blues(np.linspace(0.25, 0.95, len(unique_regimes)))
+    cmap = ListedColormap(colors)
+    bounds = np.arange(-0.5, len(unique_regimes) + 0.5, 1)
+    norm = BoundaryNorm(bounds, cmap.N)
 
-    fig, ax = plt.subplots(figsize=(6,5))
+    fig, ax = plt.subplots(figsize=(8,6))
+    mesh = ax.pcolormesh(eps_grid, s_grid, Z.values, shading='nearest',
+        cmap=cmap, norm=norm)
 
-    mesh = ax.pcolormesh(
-        eps_grid,
-        s_grid,
-        Z.values,
-        shading='nearest',
-        cmap=BLUE_CMAP
-    )
-
-    cbar = plt.colorbar(mesh)
-    cbar.set_ticks([0,1,2,3])
-    cbar.set_ticklabels(["A", "AN", "NA", "N"])
+    # colorbar
+    cbar = plt.colorbar(mesh, ticks=np.arange(len(unique_regimes)), boundaries=bounds, spacing='proportional')
+    cbar.set_ticklabels(unique_regimes)
 
     ax.set_xlabel(r"$\epsilon$")
     ax.set_ylabel(r"search cost $s$")
+    ax.set_title("Equilibrium Regimes")
 
+    plt.tight_layout()
     plt.show()
 
 def plot_price_curves(eps_grid, s_values, gamma, mu, sigma, p1_init=0.5, p2_init=0.5):
@@ -532,7 +553,7 @@ def plot_price_curves(eps_grid, s_values, gamma, mu, sigma, p1_init=0.5, p2_init
 
             p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, p1_init=p1_curr, p2_init=p2_curr)
             theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma)
-            regime = classify_regime(p1, p2, eps, s)
+            regime= classify_regime(p1, p2, eps, s)
 
             p1_curr, p2_curr = p1, p2
 
@@ -625,14 +646,14 @@ def plot_price_curves_s(s_grid, eps_values, gamma, mu, sigma, p1_init=0.5, p2_in
         price_ticks = np.arange(0.2, 0.71, 0.1)
         ax.set_yticks(price_ticks)
     
-    # disclosure axiz
-    ax2 = ax.twinx()
-    ax2.plot(s_grid, theta_list, color="cornflowerblue", linestyle='--', linewidth=2.5, label=r"$\Theta^*$")
-    ax2.set_ylim(0, 0.5)
-    ax2.set_yticks(price_ticks-0.2)
-    ax2.spines['top'].set_visible(False)
+        # disclosure axiz
+        ax2 = ax.twinx()
+        ax2.plot(s_grid, theta_list, color="cornflowerblue", linestyle='--', linewidth=2.5, label=r"$\Theta^*$")
+        ax2.set_ylim(0, 0.5)
+        ax2.set_yticks(price_ticks-0.2)
+        ax2.spines['top'].set_visible(False)
 
-    ax2.set_ylabel(r"Disclosure share $\Theta^*$")
+        ax2.set_ylabel(r"Disclosure share $\Theta^*$")
 
     # combined legend
     lines1, labels1 = axes[0].get_legend_handles_labels()
@@ -644,12 +665,356 @@ def plot_price_curves_s(s_grid, eps_values, gamma, mu, sigma, p1_init=0.5, p2_in
     plt.show()
 
 
+
+###### DEMAND COMPOSITION #####
+def demand_components_1(p1, p2, eps, s, gamma, mu, sigma):
+
+    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
+    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
+    z1_b, z1_w = z1(p1, eps, s)
+    z2_w, z2_b = z2(p2, eps, s)
+
+    # Immediate purchase fresh demand #
+    # Firm 1 is preferred: B=1
+    if z2_w > 0:
+        imm_A = (1 + theta1)/2 * (1 + eps - p1 - z2_w)
+    else:
+        imm_A = (1 + theta1)/2 * (1 + eps - p1)
+
+    # Firm 2 is preferred: W=1
+    if z2_b > 0:
+        imm_B = (1 - theta2)/2 * (1 - z2_b - p1)
+    else:
+        imm_B = (1 - theta2)/2 * (1 - p1)
+
+    D_immediate = mu * imm_A + (1-mu) * imm_B
+
+    # Search and purchase fresh demand #
+    # Firm 1 is preferred: B=1
+    if z1_b > 0:
+        search_A = (1 - theta1)/2 * ((p2 + z1_b)*(1 + eps - p1) - z1_b**2/2)
+    else:
+        search_A = 0
+
+    # Firm 2 is preferred: W=1
+    if z1_w > 0:
+        search_B = (1 + theta2)/2 * ((p2 - eps + z1_w)*(1 - p1) - z1_w**2/2)
+    else:
+        search_B = 0
+
+    D_search = mu * search_A + (1-mu) * search_B
+
+    # Reurn demand
+    D_return = D1_R(p1, p2, eps, s, gamma, mu, sigma)
+
+    return D_immediate, D_search, D_return
+
+def demand_components_2(p1, p2, eps, s, gamma, mu, sigma):
+
+    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
+    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
+
+    z1_b, z1_w = z1(p1, eps, s)
+    z2_w, z2_b = z2(p2, eps, s)
+
+    # Immediate purchase fresh demand #
+    # Firm 1 is preferred: W=2
+    if z1_b > 0:
+        imm_A = (1 - theta1)/2 * (1 - z1_b - p2)
+    else:
+        imm_A = (1 - theta1)/2 * (1 - p2)
+
+    # Firm 2 is preferred: B=2
+    if z1_w > 0:
+        imm_B = (1 + theta2)/2 * (1 + eps - p2 - z1_w)
+    else:
+        imm_B = (1 + theta2)/2 * (1 + eps - p2)
+
+    D_immediate = mu * imm_A + (1-mu) * imm_B
+
+   # Search and purchase fresh demand #
+    # Firm 1 is preferred: W=2
+    if z2_w > 0:
+        search_A = (1 + theta1)/2 * ((p1 - eps + z2_w)*(1 - p2) - z2_w**2/2)
+    else:
+        search_A = 0
+
+    # Firm 2 is preferred: B=2
+    if z2_b > 0:
+        search_B = (1 - theta2)/2 * ((p1 + z2_b)*(1 + eps - p2) - z2_b**2/2)
+    else:
+        search_B = 0
+
+    D_search = mu * search_A + (1-mu) * search_B
+
+    # Return demand #
+    D_return = D2_R(p1, p2, eps, s, gamma, mu, sigma)
+
+    return D_immediate, D_search, D_return
+
+
+def plot_demand_composition_eps(eps_grid, s_values, gamma, mu, sigma, firm=1, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1, 3, figsize=(18,5), sharey=True)
+
+    colors = ["#c7d9f2", "#7ea6e0", "#2f5aa8"]
+
+    for i, s in enumerate(s_values):
+        ax = axes[i]
+
+        imm_list, search_list, return_list, regimes = [], [], [], []
+       
+        p1_curr, p2_curr = p1_init, p2_init
+        for eps in eps_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma,p1_init=p1_curr,p2_init=p2_curr)
+            regime = classify_regime(p1, p2, eps, s)
+            if firm == 1:
+                imm, search, ret = demand_components_1(p1, p2, eps, s, gamma, mu, sigma)
+            else:
+                imm, search, ret = demand_components_2(p1, p2, eps, s, gamma, mu, sigma)
+
+            p1_curr, p2_curr = p1, p2
+
+            imm_list.append(imm)
+            search_list.append(search)
+            return_list.append(ret)
+            regimes.append(regime)
+
+        ax.stackplot(eps_grid,imm_list,search_list,return_list,
+            labels=["Immediate purchase","Search then purchase","Return demand"],
+            colors=colors,alpha=0.95)
+
+        # regime boundaries
+        for j in range(1, len(eps_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5*(eps_grid[j] + eps_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.set_title(f"Search cost = {s}")
+        ax.set_xlabel(r"$\epsilon$")
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+    axes[0].set_ylabel("Demand")
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles,labels,loc='upper center',bbox_to_anchor=(0.5, 1.03),ncol=3,frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.95])
+    plt.show()
+
+
+def plot_demand_composition_s(s_grid, eps_values, gamma, mu, sigma, firm=1, p1_init=0.5,p2_init=0.5):
+    fig, axes = plt.subplots(1, 3, figsize=(18,5), sharey=True)
+
+    colors = ["#c7d9f2", "#7ea6e0", "#2f5aa8"]
+
+    for i, eps in enumerate(eps_values):
+        ax = axes[i]
+
+        imm_list, search_list, return_list, regimes = [], [], [], []
+
+        p1_curr, p2_curr = p1_init, p2_init
+        for s in s_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma,p1_init=p1_curr,p2_init=p2_curr)
+            regime = classify_regime(p1, p2, eps, s)
+            if firm == 1:
+                imm, search, ret = demand_components_1(p1, p2, eps, s, gamma, mu, sigma)
+            else:
+                imm, search, ret = demand_components_2(p1, p2, eps, s, gamma, mu, sigma)
+            
+            p1_curr, p2_curr = p1, p2
+            
+            imm_list.append(imm)
+            search_list.append(search)
+            return_list.append(ret)
+            regimes.append(regime)
+
+        ax.stackplot(s_grid,imm_list,search_list,return_list,
+            labels=["Immediate purchase","Search then purchase","Return demand"],
+            colors=colors, alpha=0.95)
+
+        for j in range(1, len(s_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5*(s_grid[j] + s_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.set_title(rf"$\epsilon = {eps}$")
+        ax.set_xlabel(r"$s$")
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+    axes[0].set_ylabel("Demand")
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles,labels,loc='upper center',bbox_to_anchor=(0.5, 1.03),ncol=3,frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.95])
+    plt.show()
+
+
+##### Derivatives of theta^* #####
+
+def dtheta_dp1(p1, p2, eps, s, gamma, mu, sigma):
+    z1_b, z1_w = z1(p1, eps, s)
+    z2_w, z2_b = z2(p2, eps, s)
+
+    latent_theta1 = (gamma + (1-gamma)*((EU1_B(p1, p2, eps, s) - EU2_W(p1, p2, eps, s))/2))/sigma
+    latent_theta2 = (gamma + (1-gamma)*((EU2_B(p1, p2, eps, s) - EU1_W(p1, p2, eps, s))/2))/sigma
+
+    # Firm 1 is preferred: B=1
+    if z1_b > 0 and z2_w > 0: # reg A (active search)
+        dtheta_b1 = 1/(2*sigma) * (1 - 2*np.sqrt(2*s))
+    elif z1_b > 0 and z2_w <= 0: # reg AN (no search after good match)
+        dtheta_b1 = 1/(2*sigma) * (p2 - np.sqrt(2*s))
+    elif z1_b <= 0 and z2_w > 0: # reg NA (no search after bad match)
+        dtheta_b1 = 1/(2*sigma) * (p1 - p2 - eps - np.sqrt(2*s))
+    elif z1_b <=0 and z2_w <= 0: # reg N (no search)
+        dtheta_b1 = 1/(2*sigma) * (p1 - 1 - eps)
+    # make sure theta in [0,1]
+    if latent_theta1 < 0 or latent_theta1 > 1:
+        dtheta_b1 = 0
+
+    # Firm 2 is preferred: w=1
+    if z1_w > 0 and z2_b > 0: # reg A (active search)
+        dtheta_w1 = 1/(2*sigma) * (2*np.sqrt(2*s) - 1)
+    elif z1_w <=0 and z2_b > 0: # reg AN (no search after good match)
+        dtheta_w1 = 1/(2*sigma) * (p2 - p1 - eps + np.sqrt(2*s))
+    elif z1_w > 0 and z2_b <= 0: # reg NA (no search after bad match)
+        dtheta_w1 = 1/(2*sigma) * (np.sqrt(2*s) + eps - p2)
+    elif z1_w <= 0 and z2_b <= 0: # reg N (no search)
+        dtheta_w1 = 1/(2*sigma) * (1 - p1)
+    # make sure theta in [0,1]
+    if latent_theta2 < 0 or latent_theta2 > 1:
+        dtheta_w1 = 0
+    
+    dtheta_1 = mu * dtheta_b1 + (1-mu) * dtheta_w1
+    return dtheta_1
+
+def dtheta_dp2(p1, p2, eps, s, gamma, mu, sigma):
+    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma)
+    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma)
+    z1_b, z1_w = z1(p1, eps, s)
+    z2_w, z2_b = z2(p2, eps, s)
+
+    # Firm 1 is preferred: W = 2
+    if z1_b > 0 and z2_w > 0: # reg A (active search)
+        dtheta_w2 = 1/(2*sigma) * (2*np.sqrt(2*s) - 1)
+    elif z1_b > 0 and z2_w <= 0: # reg AN (no search after good match)
+        dtheta_w2 = 1/(2*sigma) * (p1 - p2 - eps + np.sqrt(2*s))
+    elif z1_b <= 0 and z2_w > 0: # reg NA (no search after bad match)
+        dtheta_w2 = 1/(2*sigma) * (np.sqrt(2*s) + eps - p1)
+    elif z1_b <=0 and z2_w <= 0: # reg N (no search)
+        dtheta_w2 = 1/(2*sigma) * (1 - p2)
+    # make sure theta in [0,1]
+    if theta1 <= 0 or theta1 >= 1:
+        dtheta_w2 = 0 
+    
+    # Firm 2 is preferred: B = 2
+    if z1_w > 0 and z2_b > 0: # reg A (active search)
+        dtheta_b2 = 1/(2*sigma) * (1 - 2*np.sqrt(2*s))
+    elif z1_w <=0 and z2_b > 0: # reg AN (no search after good match)
+        dtheta_b2 = 1/(2*sigma) * (p1 - np.sqrt(2*s))
+    elif z1_w > 0 and z2_b <= 0: # reg NA (no search after bad match)
+        dtheta_b2 = 1/(2*sigma) * (p2 - p1 - eps - np.sqrt(2*s))
+    elif z1_w <= 0 and z2_b <= 0: # reg N (no search)
+        dtheta_b2 = 1/(2*sigma) * (p2 - 1 - eps)
+    # make sure theta in [0,1]
+    if theta2 <= 0 or theta2 >= 1:
+        dtheta_b2 = 0
+    
+    dtheta_2 = mu * dtheta_w2 + (1-mu) * dtheta_b2
+    return dtheta_2
+
+def plot_dtheta(eps_grid, s_values, gamma, mu, sigma, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1, 3,figsize=(18,5))
+
+    for i, s in enumerate(s_values):
+        ax = axes[i]
+        p1_curr, p2_curr = p1_init, p2_init
+
+        dtheta1_list, dtheta2_list = [], []
+        regimes = []
+        for eps in eps_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma,p1_init=p1_curr,p2_init=p2_curr)
+
+            regime = classify_regime(p1, p2, eps, s)
+            dtheta1 = dtheta_dp1(p1, p2, eps, s,gamma, mu, sigma)
+            dtheta2 = dtheta_dp2(p1, p2, eps, s,gamma, mu, sigma)
+
+            dtheta1_list.append(dtheta1)
+            dtheta2_list.append(dtheta2)
+            regimes.append(regime)
+
+            p1_curr, p2_curr = p1, p2
+
+        ax.plot(eps_grid, dtheta1_list, label=r"$\partial \Theta^*/ \partial p_1$", color="indigo", linewidth=2)
+        ax.plot(eps_grid, dtheta2_list, label=r"$\partial \Theta^*/ \partial p_2$", color="slateblue", linewidth=2)
+
+        for j in range(1, len(eps_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5*(eps_grid[j] + eps_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.set_title(rf"Search cost = {s}")
+        ax.set_xlabel(r"$\epsilon$")
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        ax.spines['top'].set_visible(False)
+
+    # combined legend
+    lines1, labels1 = axes[0].get_legend_handles_labels()
+    fig.legend(lines1, labels1, loc='upper center', ncol=2, frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.show()
+
+def plot_dtheta_s(s_grid, eps_values, gamma, mu, sigma, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1, 3,figsize=(18,5))
+
+    for i, eps in enumerate(eps_values):
+        ax = axes[i]
+        p1_curr, p2_curr = p1_init, p2_init
+
+        dtheta1_list, dtheta2_list = [], []
+        regimes = []
+        for s in s_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma,p1_init=p1_curr,p2_init=p2_curr)
+            regime = classify_regime(p1, p2, eps, s)
+            dtheta1 = dtheta_dp1(p1, p2, eps, s,gamma, mu, sigma)
+            dtheta2 = dtheta_dp2(p1, p2, eps, s,gamma, mu, sigma)
+
+            dtheta1_list.append(dtheta1)
+            dtheta2_list.append(dtheta2)
+            regimes.append(regime)
+
+            p1_curr, p2_curr = p1, p2
+
+        ax.plot(s_grid, dtheta1_list, label=r"$\partial \Theta^*/ \partial p_1$", color="indigo", linewidth=2)
+        ax.plot(s_grid, dtheta2_list, label=r"$\partial \Theta^*/ \partial p_2$", color="slateblue", linewidth=2)
+
+        for j in range(1, len(s_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5*(s_grid[j] + s_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.set_title(rf"$\epsilon$= {eps}")
+        ax.set_xlabel(r"$s$")
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        ax.spines['top'].set_visible(False)
+
+    # combined legend
+    lines1, labels1 = axes[0].get_legend_handles_labels()
+    fig.legend(lines1, labels1, loc='upper center', ncol=2, frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.show()
+
+
 ###### NO SHARING VERSION OF THE MODEL #######
 def D1_F_NS(p1, p2, eps, s, mu):
     z1_b, z1_w = z1(p1, eps, s)
     z2_w, z2_b = z2(p2, eps, s)
 
-    # Firm 1 is preferred: D1_F = DBF_1 (preferred firm, F=1)
+    # Firm 1 is preferred: D1_F = DBF_1 (preferred firm, B=1)
     if z1_b > 0 and z2_w > 0: # reg A (active search)
         DBF_1 = 1/2 *(1 + eps - p1 - z2_w) \
         + 1/2 * ((p2+z1_b)*(1 + eps - p1) - z1_b**2/2)
@@ -661,7 +1026,7 @@ def D1_F_NS(p1, p2, eps, s, mu):
     elif z1_b <=0 and z2_w <= 0: # reg N (no search)
         DBF_1 = 1/2 *(1 + eps - p1)
 
-    # Firm 2 is preferred: D1_F = DWF_1 (non-preferred firm, F=1)
+    # Firm 2 is preferred: D1_F = DWF_1 (non-preferred firm, W=1)
     if z1_w > 0 and z2_b > 0: # reg A (active search)
         DWF_1 = 1/2 * (1 - z2_b - p1) \
         + 1/2 * ((p2 - eps + z1_w)*(1 - p1) - z1_w**2/2)
@@ -932,20 +1297,12 @@ def plot_welfare_comparison(df):
 
     for i, model in enumerate(models):
         values = [df.loc[model, m] for m in metrics]
-        ax.bar(
-            x + i*width,
-            values,
-            width,
-            label=model,
-            color=colors[i],
-            edgecolor='black',
-            linewidth=0.5
-        )
+        ax.bar(x + i*width, values, width, label=model, color=colors[i], edgecolor='black', linewidth=0.5)
 
     ax.set_xticks(x + width, metrics)
     ax.set_xlabel("Outcome")
     ax.set_ylabel("Value")
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0, df["W"].values.max()*1.15)
     ax.grid(axis='y', linestyle='--', alpha=0.7)
     ax.set_axisbelow(True)
     ax.spines['top'].set_visible(False)
