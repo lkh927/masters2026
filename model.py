@@ -338,44 +338,6 @@ def check_interior(p1, p2, eps, s, gamma, mu, sigma):
         "interior": cond_z and cond_theta and cond_support1 and cond_support2
     }
 
-def compute_equilibrium_path(eps, s, gamma_grid, mu, sigma):
-    p1_list, p2_list, theta_list = [], [], []
-    pi1_list, pi2_list = [], []
-    CS_list, PS_list, W_list = [], [], []
-    
-    # warm start
-    p1_init, p2_init = 0.5, 0.5
-    
-    for gamma in gamma_grid:
-        p1, p2, converged = solve_equilibrium(
-            eps, s, gamma, mu, sigma, 
-            p1_init=p1_init,
-            p2_init=p2_init
-        )
-        
-        # update warm start
-        p1_init, p2_init = p1, p2
-        
-        theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma)
-
-        pi1 = profit1(p1, p2, eps, s, gamma, mu, sigma)
-        pi2 = profit2(p1, p2, eps, s, gamma, mu, sigma)
-
-        CS = consumer_surplus(p1, p2, eps, s, gamma, mu, sigma)
-        PS = producer_surplus(p1, p2, eps, s, gamma, mu, sigma)
-        W  = CS + PS
-        
-        p1_list.append(p1)
-        p2_list.append(p2)
-        pi1_list.append(pi1)
-        pi2_list.append(pi2)
-        theta_list.append(theta)
-        CS_list.append(CS)
-        PS_list.append(PS)
-        W_list.append(W)
-    
-    return np.array(p1_list), np.array(p2_list), np.array(pi1_list), np.array(pi2_list), np.array(theta_list), np.array(CS_list), np.array(PS_list), np.array(W_list)
-
 # WELFARE OUTCOMES #
 
 def consumer_surplus(p1, p2, eps, s, gamma, mu, sigma):
@@ -429,11 +391,11 @@ def classify_regime(p1, p2, eps, s):
     if z1_w > 0 and z2_b > 0:
         regime_2 = "A"      # full search
     elif z1_w <= 0 and z2_b > 0:
-        regime_2 = "AN"
+        regime_2 = "AN"     # no search after good match
     elif z1_w > 0 and z2_b <= 0:
-        regime_2 = "NA"
+        regime_2 = "NA"     # no search after bad match
     else:
-        regime_2 = "N"
+        regime_2 = "N"      # no search at all
     
     # aggregate regime
     if regime_1 == regime_2:
@@ -534,7 +496,6 @@ def plot_regime_map(df, eps_grid, s_grid):
 
     ax.set_xlabel(r"$\epsilon$")
     ax.set_ylabel(r"search cost $s$")
-    ax.set_title("Equilibrium Regimes")
 
     plt.tight_layout()
     plt.show()
@@ -1008,6 +969,143 @@ def plot_dtheta_s(s_grid, eps_values, gamma, mu, sigma, p1_init=0.5, p2_init=0.5
     plt.tight_layout(rect=[0,0,1,0.92])
     plt.show()
 
+##### NAIVETE #######
+
+def plot_prices_gamma(cases, gamma_grid, mu, sigma, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1,2,figsize=(10,4),sharex=True)
+
+    for i, case in enumerate(cases):
+        ax = axes[i]
+        eps, s = case
+        p1_curr, p2_curr = p1_init, p2_init
+        p1_list, p2_list = [], []
+        regimes = []
+
+        for gamma in gamma_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, p1_init=p1_curr,p2_init=p2_curr)
+            # warm start update
+            p1_curr, p2_curr = p1, p2
+            regime = classify_regime(p1, p2, eps, s)
+
+            p1_list.append(p1)
+            p2_list.append(p2)
+            regimes.append(regime)
+
+        # regime boundaries
+        for j in range(1, len(gamma_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5 * (gamma_grid[j] + gamma_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.plot(gamma_grid, p1_list, label=r"$p_1$", color="slateblue", linewidth=2)
+        ax.plot(gamma_grid, p2_list, label=r"$p_2$", color="royalblue", linewidth=2)
+        ax.set_title(rf"$\epsilon$={eps}, $s$={s}")
+        ax.set_xlabel(r"$\gamma$")
+        ax.set_ylabel("Welfare")
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_ylim(0.2,1)
+
+    lines1, labels1 = axes[0].get_legend_handles_labels()
+    fig.legend(lines1, labels1, loc='upper center', ncol=2, frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.show()
+
+def plot_welfare_gamma(cases, gamma_grid, mu, sigma, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1,2,figsize=(10,4),sharex=True)
+
+    for i, case in enumerate(cases):
+        ax = axes[i]
+        eps, s = case
+        p1_curr, p2_curr = p1_init, p2_init
+        CS_list, PS_list, W_list, theta_list = [], [], [], []
+        regimes = []
+
+        for gamma in gamma_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, p1_init=p1_curr,p2_init=p2_curr)
+            # warm start update
+            p1_curr, p2_curr = p1, p2
+
+            Theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma)
+            regime = classify_regime(p1, p2, eps, s)
+            CS = consumer_surplus(p1, p2, eps, s, gamma, mu, sigma)
+            PS = producer_surplus(p1, p2, eps, s, gamma, mu, sigma)
+            W = CS + PS
+
+            CS_list.append(CS)
+            PS_list.append(PS)
+            W_list.append(W)
+            regimes.append(regime)
+            theta_list.append(Theta)
+
+        # regime boundaries
+        for j in range(1, len(gamma_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5 * (gamma_grid[j] + gamma_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.plot(gamma_grid, CS_list, label="CS", color="slateblue", linewidth=2)
+        ax.plot(gamma_grid, PS_list, label="PS", color="royalblue", linewidth=2)
+        ax.plot(gamma_grid, W_list, label="W", color="indigo", linewidth=2)
+        ax.plot(gamma_grid, theta_list, label=r"$\Theta^*$", color="cornflowerblue", linestyle='--', linewidth=1)
+        ax.set_title(rf"$\epsilon$={eps}, $s$={s}")
+        ax.set_xlabel(r"$\gamma$")
+        ax.set_ylabel("Welfare")
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_ylim(-0.3,1.3)
+
+    lines1, labels1 = axes[0].get_legend_handles_labels()
+    fig.legend(lines1, labels1, loc='upper center', ncol=4, frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.show()
+
+
+def plot_profit_gamma(cases, gamma_grid, mu, sigma, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1,2,figsize=(10,4),sharex=True)
+
+    for i, case in enumerate(cases):
+        ax = axes[i]
+        eps, s = case
+        p1_curr, p2_curr = p1_init, p2_init
+        pi1_list, pi2_list, theta_list = [], [], []
+        regimes = []
+
+        for gamma in gamma_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, p1_init=p1_curr,p2_init=p2_curr)
+            # warm start update
+            p1_curr, p2_curr = p1, p2
+            Theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma)
+            regime = classify_regime(p1, p2, eps, s)
+            pi1 = profit1(p1, p2, eps, s, gamma, mu, sigma)
+            pi2 = profit2(p1, p2, eps, s, gamma, mu, sigma)
+
+            pi1_list.append(pi1)
+            pi2_list.append(pi2)
+            regimes.append(regime)
+
+        # regime boundaries
+        for j in range(1, len(gamma_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5 * (gamma_grid[j] + gamma_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.plot(gamma_grid, pi1_list, label=r"$\pi_1$", color="slateblue", linewidth=2)
+        ax.plot(gamma_grid, pi2_list, label=r"$\pi_2$", color="royalblue", linewidth=2)
+        ax.set_title(rf"$\epsilon$={eps}, $s$={s}")
+        ax.set_xlabel(r"$\gamma$")
+        ax.set_ylabel("Welfare")
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_ylim(0,0.5)
+
+    lines1, labels1 = axes[0].get_legend_handles_labels()
+    fig.legend(lines1, labels1, loc='upper center', ncol=4, frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.show()
 
 ###### NO SHARING VERSION OF THE MODEL #######
 def D1_F_NS(p1, p2, eps, s, mu):
