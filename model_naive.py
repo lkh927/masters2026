@@ -24,33 +24,17 @@ BLUE_CMAP = plt.cm.Blues
 # TYPE A (prefers firm 1)
 # TYPE B (prefers firm 2)
 def z1(p1, eps, s):
-    '''Reservation value for consumeres who visit firm 2 first. Defines the threshold match value for
-    which consumers are indifferent between stopping search at firm 2 and paying s to search on to firm 1
-        p1: Price charged by firm 1.
-        eps: Preference shifter inducing the natural preference for firm 1.
-        s: Search cost.'''
     z1_b = 1 + eps - p1 - np.sqrt(2*s)
     z1_w = 1 - p1 - np.sqrt(2*s)
     return z1_b, z1_w
 
 def z2(p2, eps, s):
-    '''Reservation value for consumeres who visit firm 1 first. Defines the threshold match value for
-    which consumers are indifferent between stopping search at firm 1 and paying s to search on to firm 2
-        p2: Price charged by firm 2.
-        eps: Preference shifter inducing the natural preference for firm 2.
-        s: Search cost.'''
     z2_w = 1 - p2 - np.sqrt(2*s)
     z2_b = 1 + eps - p2 - np.sqrt(2*s)
     return z2_w, z2_b
 
 # EXPECTED UTILITIES AND DISCLOSURE CUTOFF #
 def EU1_B(p1, p2, eps, s):
-    '''Expected utility of visiting firm 1 first, given that the first visit is free.
-    EU1 = E[max{u1, z2, 0}]. Here for type A, who prefers firm 1.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
     z_2, _ = z2(p2, eps, s)
     if z_2 > 0:
         EU1 = z_2*(z_2 - eps + p1) + ((1 + eps - p1)**2 - z_2**2)/2
@@ -59,12 +43,6 @@ def EU1_B(p1, p2, eps, s):
     return EU1
 
 def EU1_W(p1, p2, eps, s):
-    '''Expected utility of visiting firm 1 first, given that the first visit is free.
-    EU1 = E[max{u1, z2, 0}]. Here for type B, who prefers firm 2.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
     _, z_2 = z2(p2, eps, s)
     if z_2 > 0:
         EU1 = z_2*(z_2 + p1) + ((1 - p1)**2 - z_2**2)/2
@@ -73,13 +51,6 @@ def EU1_W(p1, p2, eps, s):
     return EU1
 
 def EU2_W(p1, p2, eps, s):
-    '''Expected utility of visiting firm 2 first, given that the first visit is free.
-    EU2 = E[max{u2, z1, 0}]. Visiting firm 2 first happens with probability 0 if consumers decide to disclose
-    and with probaiblity 0 if they do not. Here for type A.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
     z_1, _ = z1(p1, eps, s)
     if z_1 > 0:
         EU2 = z_1*(z_1 + p2) + ((1-p2)**2 - z_1**2)/2
@@ -88,13 +59,6 @@ def EU2_W(p1, p2, eps, s):
     return EU2
 
 def EU2_B(p1, p2, eps, s):
-    '''Expected utility of visiting firm 2 first, given that the first visit is free.
-    EU2 = E[max{u2, z1, 0}]. Visiting firm 2 first happens with probability 0 if consumers decide to disclose
-    and with probaiblity 0 if they do not. Here for type B.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost.'''
     _, z_1 = z1(p1, eps, s)
     if z_1 > 0:
         EU2 = z_1*(z_1 - eps + p2) + ((1 + eps - p2)**2 - z_1**2)/2
@@ -102,47 +66,44 @@ def EU2_B(p1, p2, eps, s):
         EU2 = (1 + eps - p2)**2/2
     return EU2
 
-def theta_star_1(p1, p2, eps, s, sigma):
-    '''The disclosure cutoff for consumers who choose to disclose their preference for firm 1. 
-    Disclosing this information comes at cost theta_i, which is the consumers' individual type, 
-    capturing their privacy preferences. Here for type A.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost
-    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    theta_star = (EU1_B(p1, p2, eps, s) - EU2_W(p1, p2, eps, s))/2
-    theta = theta_star/sigma
-    return np.clip(theta, 0, 1)
+def theta_soph_1(p1, p2, eps, s, sigma):
+    theta_1 = (EU1_B(p1, p2, eps, s) - EU2_W(p1, p2, eps, s))/2
+    return np.clip(theta_1/sigma, 0, 1)
 
-def theta_star_2(p1, p2, eps, s, sigma):
-    '''The disclosure cutoff for consumers who choose to disclose their preference for firm 1. 
-    Disclosing this information comes at cost theta_i, which is the consumers' individual type, 
-    capturing their privacy preferences. Here for type B.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost
-    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    theta_star = (EU2_B(p1, p2, eps, s) - EU1_W(p1, p2, eps, s))/2
-    theta = theta_star/sigma
-    return np.clip(theta, 0, 1)
+def theta_soph_2(p1, p2, eps, s, sigma):
+    theta_2 = (EU2_B(p1, p2, eps, s) - EU1_W(p1, p2, eps, s))/2
+    return np.clip(theta_2/sigma, 0, 1)
 
-def Theta_star(p1, p2, eps, s, mu, sigma):
-    '''The overall disclosure cutoff, as a weighted average of the disclosure cutoffs of type A and type B consumers.
-    p1: Price charged by firm 1.
-    p2: Price charged by firm 2.
-    eps: Preference shifter inducing the natural preference for firm 1.
-    s: Search cost
-    mu: The share of type A consumers.
-    sigma: the scale parameter of the distribution of consumer types (uniform on [0,sigma])'''
-    Theta = mu * theta_star_1(p1, p2, eps, s, sigma) + (1-mu) * theta_star_2(p1, p2, eps, s, sigma)
+def theta_naive_1(p1, p2, eps, s, sigma, alpha):
+    theta_1 = theta_soph_1(p1, p2, eps, s, sigma)
+    theta_1_naive = theta_1/alpha
+    return np.clip(theta_1_naive, 0, 1)
+
+def theta_naive_2(p1, p2, eps, s, sigma, alpha):
+    theta_2 = theta_soph_2(p1, p2, eps, s, sigma)
+    theta_2_naive = theta_2/alpha
+    return np.clip(theta_2_naive, 0, 1)
+
+def theta_star_1(p1, p2, eps, s, gamma, sigma, alpha):
+    sophisticated = theta_soph_1(p1, p2, eps, s, sigma)
+    naive = theta_naive_1(p1, p2, eps, s, sigma, alpha)
+    theta_star = gamma*naive + (1-gamma)*sophisticated
+    return np.clip(theta_star, 0, 1)
+
+def theta_star_2(p1, p2, eps, s, gamma, sigma, alpha):
+    sophisticated = theta_soph_2(p1, p2, eps, s, sigma)
+    naive = theta_naive_2(p1, p2, eps, s, sigma, alpha)
+    theta_star = gamma*naive + (1-gamma)*sophisticated
+    return np.clip(theta_star, 0, 1)
+
+def Theta_star(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    Theta = mu * theta_star_1(p1, p2, eps, s, gamma, sigma, alpha) + (1-mu) * theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
     return Theta
 
 # RANKING PROBABILITIES #
-def ranking_probs(p1, p2, eps, s, mu, sigma):
-    theta1 = theta_star_1(p1, p2, eps, s, sigma)
-    theta2 = theta_star_2(p1, p2, eps, s, sigma)
+def ranking_probs(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma, alpha)
+    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
     
     non_disclosure = mu*(1-theta1) + (1-mu)*(1-theta2)
     
@@ -154,9 +115,9 @@ def ranking_probs(p1, p2, eps, s, mu, sigma):
 # DEMAND #
 # interior case relies on positive reservation values and 0 is in [eps-p_1, 1+eps-p_1] and [-p_2, 1-p_2]
 
-def D1_F(p1, p2, eps, s, mu, sigma):
-    thetastar_1 = theta_star_1(p1, p2, eps, s, sigma)
-    thetastar_2 = theta_star_2(p1, p2, eps, s, sigma)
+def D1_F(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    thetastar_1 = theta_star_1(p1, p2, eps, s, gamma, sigma, alpha)
+    thetastar_2 = theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
     z1_b, z1_w = z1(p1, eps, s)
     z2_w, z2_b = z2(p2, eps, s)
 
@@ -187,9 +148,9 @@ def D1_F(p1, p2, eps, s, mu, sigma):
     D1_F = mu * DBF_1 + (1-mu) * DWF_1
     return D1_F
 
-def D1_R(p1, p2, eps, s, mu, sigma):
-    thetastar_1 = theta_star_1(p1, p2, eps, s, sigma)
-    thetastar_2 = theta_star_2(p1, p2, eps, s, sigma)
+def D1_R(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    thetastar_1 = theta_star_1(p1, p2, eps, s, gamma, sigma, alpha)
+    thetastar_2 = theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
     z2_w, z2_b = z2(p2, eps, s)
 
     # Firm 1 is preferred:
@@ -207,14 +168,14 @@ def D1_R(p1, p2, eps, s, mu, sigma):
     D1_R = mu * DBR_1 + (1-mu) * DWR_1
     return D1_R
 
-def D1(p1, p2, eps, s, mu, sigma):
-    D1F = D1_F(p1, p2, eps, s, mu, sigma)
-    D1R = D1_R(p1, p2, eps, s, mu, sigma)
+def D1(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    D1F = D1_F(p1, p2, eps, s, gamma, mu, sigma, alpha)
+    D1R = D1_R(p1, p2, eps, s, gamma, mu, sigma, alpha)
     return D1F + D1R
 
-def D2_F(p1, p2, eps, s, mu, sigma):
-    thetastar_1 = theta_star_1(p1, p2, eps, s, sigma)
-    thetastar_2 = theta_star_2(p1, p2, eps, s, sigma)
+def D2_F(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    thetastar_1 = theta_star_1(p1, p2, eps, s, gamma, sigma, alpha)
+    thetastar_2 = theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
     z1_b, z1_w = z1(p1, eps, s)
     z2_w, z2_b = z2(p2, eps, s)
 
@@ -245,9 +206,9 @@ def D2_F(p1, p2, eps, s, mu, sigma):
     D2_F = mu * DWF_2 + (1-mu) * DBF_2
     return D2_F
 
-def D2_R(p1, p2, eps, s, mu, sigma):
-    thetastar_1 = theta_star_1(p1, p2, eps, s, sigma)
-    thetastar_2 = theta_star_2(p1, p2, eps, s, sigma)
+def D2_R(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    thetastar_1 = theta_star_1(p1, p2, eps, s, gamma, sigma, alpha)
+    thetastar_2 = theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
     z1_b, z1_w = z1(p1, eps, s)
 
     # Firm 1 is preferred:
@@ -265,50 +226,50 @@ def D2_R(p1, p2, eps, s, mu, sigma):
     D2_R = mu * DWR_2 + (1-mu) * DBR_2
     return D2_R
 
-def D2(p1, p2, eps, s, mu, sigma):
-    D2F = D2_F(p1, p2, eps, s, mu, sigma)
-    D2R = D2_R(p1, p2, eps, s, mu, sigma)
+def D2(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    D2F = D2_F(p1, p2, eps, s, gamma, mu, sigma, alpha)
+    D2R = D2_R(p1, p2, eps, s, gamma, mu, sigma, alpha)
     
     return D2F + D2R
 
 # FIRM PROFITS #
-def profit1(p1, p2, eps, s, mu, sigma):
-    return p1 * D1(p1, p2, eps, s, mu, sigma)
+def profit1(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    return p1 * D1(p1, p2, eps, s, gamma, mu, sigma, alpha)
 
-def profit2(p1, p2, eps, s, mu, sigma):
-    return p2 * D2(p1, p2, eps, s, mu, sigma)
+def profit2(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    return p2 * D2(p1, p2, eps, s, gamma, mu, sigma, alpha)
 
 # BEST RESPONSE FUNCTIONS #
-def BR1(p2, eps, s, mu, sigma, n=200):
+def BR1(p2, eps, s, gamma, mu, sigma, alpha, n=200):
     grid = np.linspace(0, 1+eps, n)
-    profits = [profit1(p, p2, eps, s, mu, sigma) for p in grid]
+    profits = [profit1(p, p2, eps, s, gamma, mu, sigma, alpha) for p in grid]
     p0 = grid[np.argmax(profits)]
 
     res = minimize_scalar(
-        lambda p: -profit1(p, p2, eps, s, mu, sigma),
+        lambda p: -profit1(p, p2, eps, s, gamma, mu, sigma, alpha),
         bounds = (max(0, p0-0.1), min(1+eps, p0+0.1)),
         method='bounded')
     return res.x
 
-def BR2(p1, eps, s, mu, sigma, n=200):
+def BR2(p1, eps, s, gamma, mu, sigma, alpha, n=200):
     grid = np.linspace(0, 1+eps, n)
-    profits = [profit2(p1, p, eps, s, mu, sigma) for p in grid]
+    profits = [profit2(p1, p, eps, s, gamma, mu, sigma, alpha) for p in grid]
     p0 = grid[np.argmax(profits)]
 
     res = minimize_scalar(
-        lambda p: -profit2(p1, p, eps, s, mu, sigma),
+        lambda p: -profit2(p1, p, eps, s, gamma, mu, sigma, alpha),
         bounds = (max(0, p0-0.1), min(1+eps, p0+0.1)),
         method='bounded')
     return res.x
 
 # EQUILIBRIUM SOLVER #
-def solve_equilibrium(eps, s, mu, sigma, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
+def solve_equilibrium(eps, s, gamma, mu, sigma, alpha, p1_init=0.5, p2_init=0.5, tol=1e-6, max_iter=500):
     
     p1, p2 = p1_init, p2_init
     
     for i in range(max_iter):
-        p1_new = BR1(p2, eps, s, mu, sigma)
-        p2_new = BR2(p1_new, eps, s, mu, sigma)
+        p1_new = BR1(p2, eps, s, gamma, mu, sigma, alpha)
+        p2_new = BR2(p1_new, eps, s, gamma, mu, sigma, alpha)
         
         if max(abs(p1_new - p1), abs(p2_new - p2)) < tol:
             return p1_new, p2_new, True
@@ -317,10 +278,10 @@ def solve_equilibrium(eps, s, mu, sigma, p1_init=0.5, p2_init=0.5, tol=1e-6, max
     
     return p1, p2, False
 
-def check_interior(p1, p2, eps, s, mu, sigma):
+def check_interior(p1, p2, eps, s, gamma, mu, sigma, alpha):
     z1_A, z1_B = z1(p1, eps, s)
     z2_A, z2_B= z2(p2, eps, s)
-    theta = Theta_star(p1, p2, eps, s, mu, sigma)
+    theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma, alpha)
     
     cond_z = (z1_A > 0) and (z2_A > 0) and (z1_B > 0) and (z2_B > 0)
     cond_theta = (theta > 0) and (theta < 1)
@@ -337,10 +298,14 @@ def check_interior(p1, p2, eps, s, mu, sigma):
 
 # WELFARE OUTCOMES #
 
-def consumer_surplus(p1, p2, eps, s, mu, sigma):
+def consumer_surplus(p1, p2, eps, s, gamma, mu, sigma, alpha):
     
-    theta1 = theta_star_1(p1, p2, eps, s, sigma)
-    theta2 = theta_star_2(p1, p2, eps, s, sigma)
+    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma, alpha)
+    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
+    theta1_s = theta_soph_1(p1, p2, eps, s, sigma)
+    theta2_s = theta_soph_2(p1, p2, eps, s, sigma)
+    theta1_n = theta_naive_1(p1, p2, eps, s, sigma, alpha)
+    theta2_n = theta_naive_2(p1, p2, eps, s, sigma, alpha)
     
     # TYPE A ranking
     pi1_B = theta1 + 0.5*(1-theta1)
@@ -355,17 +320,18 @@ def consumer_surplus(p1, p2, eps, s, mu, sigma):
     EU_B = pi1_W * EU1_W(p1, p2, eps, s) + pi2_B * EU2_B(p1, p2, eps, s)
     
     # Privacy costs (uniform distribution)
-    cost_A = theta1**2 / 2
-    cost_B = theta2**2 / 2
+    cost_A = ((1-gamma) * theta1_s**2 / 2 + gamma * theta1_n**2 / 2)
+
+    cost_B = ((1-gamma) * theta2_s**2 / 2 + gamma * theta2_n**2 / 2)
     
     return mu * (EU_A - cost_A) + (1-mu) * (EU_B - cost_B)
 
-def producer_surplus(p1, p2, eps, s, mu, sigma):
-    return profit1(p1, p2, eps, s, mu, sigma) + profit2(p1, p2, eps, s, mu, sigma)
+def producer_surplus(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    return profit1(p1, p2, eps, s, gamma, mu, sigma, alpha) + profit2(p1, p2, eps, s, gamma, mu, sigma, alpha)
 
-def total_welfare(p1, p2, eps, s, mu, sigma):
-    return consumer_surplus(p1, p2, eps, s, mu, sigma) + \
-           producer_surplus(p1, p2, eps, s, mu, sigma)
+def total_welfare(p1, p2, eps, s, gamma, mu, sigma, alpha):
+    return consumer_surplus(p1, p2, eps, s, gamma, mu, sigma, alpha) + \
+           producer_surplus(p1, p2, eps, s, gamma, mu, sigma, alpha)
 
 
 ##### EQUILIBRIUM CALIBRATION #####
@@ -403,21 +369,21 @@ def classify_regime(p1, p2, eps, s):
     return regime
 
 
-def equilibrium_path_s_eps(eps_grid, s_grid, mu, sigma, prev_p1=0.5, prev_p2=0.5):
+def equilibrium_path_s_eps(eps_grid, s_grid, gamma, mu, sigma, alpha, prev_p1=0.5, prev_p2=0.5):
     results = []
 
     for eps in eps_grid:
         for s in s_grid:
             try:
-                p1, p2, converged = solve_equilibrium(eps, s, mu, sigma,
+                p1, p2, converged = solve_equilibrium(eps, s, gamma, mu, sigma, alpha,
                     p1_init=prev_p1,p2_init=prev_p2)
 
                 # warm start update
                 prev_p1, prev_p2 = p1, p2
 
                 # key objects
-                Theta = Theta_star(p1, p2, eps, s, mu, sigma)
-                interior = check_interior(p1, p2, eps, s, mu, sigma)["interior"]
+                Theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma, alpha)
+                interior = check_interior(p1, p2, eps, s, gamma, mu, sigma, alpha)["interior"]
                 regime = classify_regime(p1, p2, eps, s)
 
                 results.append({"eps": eps, "s": s, "p1": p1, "p2": p2, "Theta": Theta,
@@ -497,7 +463,7 @@ def plot_regime_map(df, eps_grid, s_grid):
     plt.tight_layout()
     plt.show()
 
-def plot_price_curves(eps_grid, s_values, mu, sigma, p1_init=0.5, p2_init=0.5):
+def plot_price_curves(eps_grid, s_values, gamma, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
     fig, axes = plt.subplots(1, 3,figsize=(18,5))
 
     for i, s in enumerate(s_values):
@@ -509,8 +475,8 @@ def plot_price_curves(eps_grid, s_values, mu, sigma, p1_init=0.5, p2_init=0.5):
         p1_curr, p2_curr = p1_init, p2_init
         for eps in eps_grid:
 
-            p1, p2, _ = solve_equilibrium(eps, s, mu, sigma, p1_init=p1_curr, p2_init=p2_curr)
-            theta = Theta_star(p1, p2, eps, s, mu, sigma)
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha, p1_init=p1_curr, p2_init=p2_curr)
+            theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma, alpha)
             regime= classify_regime(p1, p2, eps, s)
 
             p1_curr, p2_curr = p1, p2
@@ -559,7 +525,7 @@ def plot_price_curves(eps_grid, s_values, mu, sigma, p1_init=0.5, p2_init=0.5):
     plt.tight_layout(rect=[0,0,1,0.92])
     plt.show()
 
-def plot_price_curves_s(s_grid, eps_values, mu, sigma, p1_init=0.5, p2_init=0.5):
+def plot_price_curves_s(s_grid, eps_values, gamma, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
     fig, axes = plt.subplots(1, len(eps_values), figsize=(18,5), sharey=True)
 
     for i, eps in enumerate(eps_values):
@@ -571,9 +537,9 @@ def plot_price_curves_s(s_grid, eps_values, mu, sigma, p1_init=0.5, p2_init=0.5)
         # reset warm start for each epsilon
         p1_curr, p2_curr = p1_init, p2_init
         for s in s_grid:
-            p1, p2, _ = solve_equilibrium(eps, s, mu, sigma,
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha,
                 p1_init=p1_curr, p2_init=p2_curr)
-            theta = Theta_star(p1, p2, eps, s, mu, sigma)
+            theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma, alpha)
             regime = classify_regime(p1, p2, eps, s)
 
             # update warm start along s-dimension
@@ -625,10 +591,10 @@ def plot_price_curves_s(s_grid, eps_values, mu, sigma, p1_init=0.5, p2_init=0.5)
 
 
 ###### DEMAND COMPOSITION #####
-def demand_components_1(p1, p2, eps, s, mu, sigma):
+def demand_components_1(p1, p2, eps, s, gamma, mu, sigma, alpha):
 
-    theta1 = theta_star_1(p1, p2, eps, s, sigma)
-    theta2 = theta_star_2(p1, p2, eps, s, sigma)
+    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma, alpha)
+    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
     z1_b, z1_w = z1(p1, eps, s)
     z2_w, z2_b = z2(p2, eps, s)
 
@@ -663,14 +629,14 @@ def demand_components_1(p1, p2, eps, s, mu, sigma):
     D_search = mu * search_A + (1-mu) * search_B
 
     # Reurn demand
-    D_return = D1_R(p1, p2, eps, s, mu, sigma)
+    D_return = D1_R(p1, p2, eps, s, gamma, mu, sigma, alpha)
 
     return D_immediate, D_search, D_return
 
-def demand_components_2(p1, p2, eps, s, mu, sigma):
+def demand_components_2(p1, p2, eps, s, gamma, mu, sigma, alpha):
 
-    theta1 = theta_star_1(p1, p2, eps, s, sigma)
-    theta2 = theta_star_2(p1, p2, eps, s, sigma)
+    theta1 = theta_star_1(p1, p2, eps, s, gamma, sigma, alpha)
+    theta2 = theta_star_2(p1, p2, eps, s, gamma, sigma, alpha)
 
     z1_b, z1_w = z1(p1, eps, s)
     z2_w, z2_b = z2(p2, eps, s)
@@ -706,12 +672,12 @@ def demand_components_2(p1, p2, eps, s, mu, sigma):
     D_search = mu * search_A + (1-mu) * search_B
 
     # Return demand #
-    D_return = D2_R(p1, p2, eps, s, mu, sigma)
+    D_return = D2_R(p1, p2, eps, s, gamma, mu, sigma, alpha)
 
     return D_immediate, D_search, D_return
 
 
-def plot_demand_composition_eps(eps_grid, s_values, mu, sigma, firm=1, p1_init=0.5, p2_init=0.5):
+def plot_demand_composition_eps(eps_grid, s_values, gamma, mu, sigma, alpha, firm=1, p1_init=0.5, p2_init=0.5):
     fig, axes = plt.subplots(1, 3, figsize=(18,5), sharey=True)
 
     colors = ["#c7d9f2", "#7ea6e0", "#2f5aa8"]
@@ -723,12 +689,12 @@ def plot_demand_composition_eps(eps_grid, s_values, mu, sigma, firm=1, p1_init=0
        
         p1_curr, p2_curr = p1_init, p2_init
         for eps in eps_grid:
-            p1, p2, _ = solve_equilibrium(eps, s, mu, sigma,p1_init=p1_curr,p2_init=p2_curr)
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha,p1_init=p1_curr,p2_init=p2_curr)
             regime = classify_regime(p1, p2, eps, s)
             if firm == 1:
-                imm, search, ret = demand_components_1(p1, p2, eps, s, mu, sigma)
+                imm, search, ret = demand_components_1(p1, p2, eps, s, gamma, mu, sigma, alpha)
             else:
-                imm, search, ret = demand_components_2(p1, p2, eps, s, mu, sigma)
+                imm, search, ret = demand_components_2(p1, p2, eps, s, gamma, mu, sigma, alpha)
 
             p1_curr, p2_curr = p1, p2
 
@@ -762,7 +728,7 @@ def plot_demand_composition_eps(eps_grid, s_values, mu, sigma, firm=1, p1_init=0
     plt.show()
 
 
-def plot_demand_composition_s(s_grid, eps_values, mu, sigma, firm=1, p1_init=0.5,p2_init=0.5):
+def plot_demand_composition_s(s_grid, eps_values, gamma, mu, sigma, alpha, firm=1, p1_init=0.5,p2_init=0.5):
     fig, axes = plt.subplots(1, 3, figsize=(18,5), sharey=True)
 
     colors = ["#c7d9f2", "#7ea6e0", "#2f5aa8"]
@@ -774,12 +740,12 @@ def plot_demand_composition_s(s_grid, eps_values, mu, sigma, firm=1, p1_init=0.5
 
         p1_curr, p2_curr = p1_init, p2_init
         for s in s_grid:
-            p1, p2, _ = solve_equilibrium(eps, s, mu, sigma,p1_init=p1_curr,p2_init=p2_curr)
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha,p1_init=p1_curr,p2_init=p2_curr)
             regime = classify_regime(p1, p2, eps, s)
             if firm == 1:
-                imm, search, ret = demand_components_1(p1, p2, eps, s, mu, sigma)
+                imm, search, ret = demand_components_1(p1, p2, eps, s, gamma, mu, sigma, alpha)
             else:
-                imm, search, ret = demand_components_2(p1, p2, eps, s, mu, sigma)
+                imm, search, ret = demand_components_2(p1, p2, eps, s, gamma, mu, sigma, alpha)
             
             p1_curr, p2_curr = p1, p2
             
@@ -810,11 +776,6 @@ def plot_demand_composition_s(s_grid, eps_values, mu, sigma, firm=1, p1_init=0.5
     fig.legend(handles,labels,loc='upper center',bbox_to_anchor=(0.5, 1.03),ncol=3,frameon=False)
     plt.tight_layout(rect=[0,0,1,0.95])
     plt.show()
-
-def latent_theta(p1, p2, eps, s, sigma):
-    latent_theta1 = ((EU1_B(p1, p2, eps, s) - EU2_W(p1, p2, eps, s))/2)/sigma
-    latent_theta2 = ((EU2_B(p1, p2, eps, s) - EU1_W(p1, p2, eps, s))/2)/sigma
-    return latent_theta1, latent_theta2
 
 ##### Derivatives of theta^* #####
 
@@ -855,10 +816,11 @@ def dtheta_dp1(p1, p2, eps, s, mu, sigma):
     return dtheta_1
 
 def dtheta_dp2(p1, p2, eps, s, mu, sigma):
-    theta1 = theta_star_1(p1, p2, eps, s, sigma)
-    theta2 = theta_star_2(p1, p2, eps, s, sigma)
     z1_b, z1_w = z1(p1, eps, s)
     z2_w, z2_b = z2(p2, eps, s)
+
+    latent_theta1 = ((EU1_B(p1, p2, eps, s) - EU2_W(p1, p2, eps, s))/2)/sigma
+    latent_theta2 = ((EU2_B(p1, p2, eps, s) - EU1_W(p1, p2, eps, s))/2)/sigma
 
     # Firm 1 is preferred: W = 2
     if z1_b > 0 and z2_w > 0: # reg A (active search)
@@ -870,7 +832,7 @@ def dtheta_dp2(p1, p2, eps, s, mu, sigma):
     elif z1_b <=0 and z2_w <= 0: # reg N (no search)
         dtheta_w2 = 1/(2*sigma) * (1 - p2)
     # make sure theta in [0,1]
-    if theta1 <= 0 or theta1 >= 1:
+    if latent_theta1 < 0 or latent_theta1 > 1:
         dtheta_w2 = 0 
     
     # Firm 2 is preferred: B = 2
@@ -883,13 +845,13 @@ def dtheta_dp2(p1, p2, eps, s, mu, sigma):
     elif z1_w <= 0 and z2_b <= 0: # reg N (no search)
         dtheta_b2 = 1/(2*sigma) * (p2 - 1 - eps)
     # make sure theta in [0,1]
-    if theta2 <= 0 or theta2 >= 1:
+    if latent_theta2 < 0 or latent_theta2 > 1:
         dtheta_b2 = 0
     
     dtheta_2 = mu * dtheta_w2 + (1-mu) * dtheta_b2
     return dtheta_2
 
-def plot_dtheta(eps_grid, s_values, mu, sigma, p1_init=0.5, p2_init=0.5):
+def plot_dtheta(eps_grid, s_values, gamma, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
     fig, axes = plt.subplots(1, 3,figsize=(18,5))
 
     for i, s in enumerate(s_values):
@@ -899,7 +861,7 @@ def plot_dtheta(eps_grid, s_values, mu, sigma, p1_init=0.5, p2_init=0.5):
         dtheta1_list, dtheta2_list = [], []
         regimes = []
         for eps in eps_grid:
-            p1, p2, _ = solve_equilibrium(eps, s, mu, sigma,p1_init=p1_curr,p2_init=p2_curr)
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, alpha, sigma,p1_init=p1_curr,p2_init=p2_curr)
 
             regime = classify_regime(p1, p2, eps, s)
             dtheta1 = dtheta_dp1(p1, p2, eps, s, mu, sigma)
@@ -930,7 +892,7 @@ def plot_dtheta(eps_grid, s_values, mu, sigma, p1_init=0.5, p2_init=0.5):
     plt.tight_layout(rect=[0,0,1,0.92])
     plt.show()
 
-def plot_dtheta_s(s_grid, eps_values, mu, sigma, p1_init=0.5, p2_init=0.5):
+def plot_dtheta_s(s_grid, eps_values, gamma, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
     fig, axes = plt.subplots(1, 3,figsize=(18,5))
 
     for i, eps in enumerate(eps_values):
@@ -940,7 +902,7 @@ def plot_dtheta_s(s_grid, eps_values, mu, sigma, p1_init=0.5, p2_init=0.5):
         dtheta1_list, dtheta2_list = [], []
         regimes = []
         for s in s_grid:
-            p1, p2, _ = solve_equilibrium(eps, s, mu, sigma,p1_init=p1_curr,p2_init=p2_curr)
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha, p1_init=p1_curr,p2_init=p2_curr)
             regime = classify_regime(p1, p2, eps, s)
             dtheta1 = dtheta_dp1(p1, p2, eps, s, mu, sigma)
             dtheta2 = dtheta_dp2(p1, p2, eps, s, mu, sigma)
@@ -967,6 +929,144 @@ def plot_dtheta_s(s_grid, eps_values, mu, sigma, p1_init=0.5, p2_init=0.5):
     # combined legend
     lines1, labels1 = axes[0].get_legend_handles_labels()
     fig.legend(lines1, labels1, loc='upper center', ncol=2, frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.show()
+
+##### NAIVETE #######
+
+def plot_prices_gamma(cases, gamma_grid, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1,2,figsize=(10,4),sharex=True)
+
+    for i, case in enumerate(cases):
+        ax = axes[i]
+        eps, s = case
+        p1_curr, p2_curr = p1_init, p2_init
+        p1_list, p2_list = [], []
+        regimes = []
+
+        for gamma in gamma_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha, p1_init=p1_curr,p2_init=p2_curr)
+            # warm start update
+            p1_curr, p2_curr = p1, p2
+            regime = classify_regime(p1, p2, eps, s)
+
+            p1_list.append(p1)
+            p2_list.append(p2)
+            regimes.append(regime)
+
+        # regime boundaries
+        for j in range(1, len(gamma_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5 * (gamma_grid[j] + gamma_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.plot(gamma_grid, p1_list, label=r"$p_1$", color="slateblue", linewidth=2)
+        ax.plot(gamma_grid, p2_list, label=r"$p_2$", color="royalblue", linewidth=2)
+        ax.set_title(rf"$\epsilon$={eps}, $s$={s}")
+        ax.set_xlabel(r"$\gamma$")
+        ax.set_ylabel("Welfare")
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_ylim(0.2,1)
+
+    lines1, labels1 = axes[0].get_legend_handles_labels()
+    fig.legend(lines1, labels1, loc='upper center', ncol=2, frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.show()
+
+def plot_welfare_gamma(cases, gamma_grid, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1,2,figsize=(10,4),sharex=True)
+
+    for i, case in enumerate(cases):
+        ax = axes[i]
+        eps, s = case
+        p1_curr, p2_curr = p1_init, p2_init
+        CS_list, PS_list, W_list, theta_list = [], [], [], []
+        regimes = []
+
+        for gamma in gamma_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha, p1_init=p1_curr,p2_init=p2_curr)
+            # warm start update
+            p1_curr, p2_curr = p1, p2
+
+            Theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma, alpha)
+            regime = classify_regime(p1, p2, eps, s)
+            CS = consumer_surplus(p1, p2, eps, s, gamma, mu, sigma, alpha)
+            PS = producer_surplus(p1, p2, eps, s, gamma, mu, sigma, alpha)
+            W = CS + PS
+
+            CS_list.append(CS)
+            PS_list.append(PS)
+            W_list.append(W)
+            regimes.append(regime)
+            theta_list.append(Theta)
+
+        # regime boundaries
+        for j in range(1, len(gamma_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5 * (gamma_grid[j] + gamma_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.plot(gamma_grid, CS_list, label="CS", color="slateblue", linewidth=2)
+        ax.plot(gamma_grid, PS_list, label="PS", color="royalblue", linewidth=2)
+        ax.plot(gamma_grid, W_list, label="W", color="indigo", linewidth=2)
+        ax.plot(gamma_grid, theta_list, label=r"$\Theta^*$", color="cornflowerblue", linestyle='--', linewidth=1)
+        ax.set_title(rf"$\epsilon$={eps}, $s$={s}")
+        ax.set_xlabel(r"$\gamma$")
+        ax.set_ylabel("Welfare")
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_ylim(0,1.2)
+
+    lines1, labels1 = axes[0].get_legend_handles_labels()
+    fig.legend(lines1, labels1, loc='upper center', ncol=4, frameon=False)
+    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.show()
+
+
+def plot_profit_gamma(cases, gamma_grid, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
+    fig, axes = plt.subplots(1,2,figsize=(10,4),sharex=True)
+
+    for i, case in enumerate(cases):
+        ax = axes[i]
+        eps, s = case
+        p1_curr, p2_curr = p1_init, p2_init
+        pi1_list, pi2_list, theta_list = [], [], []
+        regimes = []
+
+        for gamma in gamma_grid:
+            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha, p1_init=p1_curr,p2_init=p2_curr)
+            # warm start update
+            p1_curr, p2_curr = p1, p2
+            Theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma, alpha)
+            regime = classify_regime(p1, p2, eps, s)
+            pi1 = profit1(p1, p2, eps, s, gamma, mu, sigma, alpha)
+            pi2 = profit2(p1, p2, eps, s, gamma, mu, sigma, alpha)
+
+            pi1_list.append(pi1)
+            pi2_list.append(pi2)
+            regimes.append(regime)
+
+        # regime boundaries
+        for j in range(1, len(gamma_grid)):
+            if regimes[j] != regimes[j-1]:
+                boundary = 0.5 * (gamma_grid[j] + gamma_grid[j-1])
+                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+
+        ax.plot(gamma_grid, pi1_list, label=r"$\pi_1$", color="slateblue", linewidth=2)
+        ax.plot(gamma_grid, pi2_list, label=r"$\pi_2$", color="royalblue", linewidth=2)
+        ax.set_title(rf"$\epsilon$={eps}, $s$={s}")
+        ax.set_xlabel(r"$\gamma$")
+        ax.set_ylabel("Welfare")
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_ylim(0,0.5)
+
+    lines1, labels1 = axes[0].get_legend_handles_labels()
+    fig.legend(lines1, labels1, loc='upper center', ncol=4, frameon=False)
     plt.tight_layout(rect=[0,0,1,0.92])
     plt.show()
 
@@ -1163,11 +1263,11 @@ def compare_outcomes_benchmark(eps, s, mu, sigma):
     }
 
     # --- Sharing, rational ---
-    p1_r, p2_r, _ = solve_equilibrium(eps, s, mu=mu, sigma=sigma)
-    pi1_r = profit1(p1_r, p2_r, eps, s, mu=mu, sigma=sigma)
-    pi2_r = profit2(p1_r, p2_r, eps, s, mu=mu, sigma=sigma)
+    p1_r, p2_r, _ = solve_equilibrium(eps, s, gamma=0, mu=mu, sigma=sigma, alpha=0.2)
+    pi1_r = profit1(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=0.2)
+    pi2_r = profit2(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=0.2)
 
-    Theta_r = Theta_star(p1_r, p2_r, eps, s, mu=mu, sigma=sigma)
+    Theta_r = Theta_star(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=0.2)
     regime_r = classify_regime(p1_r, p2_r, eps, s)
 
     results["Full Model with Disclosure"] = {
@@ -1175,12 +1275,75 @@ def compare_outcomes_benchmark(eps, s, mu, sigma):
         "p2": p2_r,
         "pi1": pi1_r,
         "pi2": pi2_r,
-        "CS": consumer_surplus(p1_r, p2_r, eps, s, mu=mu, sigma=sigma),
+        "CS": consumer_surplus(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=0.2),
         "PS": pi1_r + pi2_r,
-        "W": total_welfare(p1_r, p2_r, eps, s, mu=mu, sigma=sigma),
+        "W": total_welfare(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=0.2),
         "Theta": Theta_r,
         "regime": regime_r
     }
+    return pd.DataFrame(results).T
+
+def compare_outcomes(eps, s, mu, sigma, alpha):
+
+    results = {}
+
+    # --- No sharing ---
+    p1_ns, p2_ns, _ = solve_equilibrium_NS(eps, s, mu)
+    pi1_ns = profit1_NS(p1_ns, p2_ns, eps, s, mu)
+    pi2_ns = profit2_NS(p1_ns, p2_ns, eps, s, mu)
+    regime_ns = classify_regime(p1_ns, p2_ns, eps, s)
+
+    results["Benchmark"] = {
+        "p1": p1_ns,
+        "p2": p2_ns,
+        "pi1": pi1_ns,
+        "pi2": pi2_ns,
+        "CS": consumer_surplus_NS(p1_ns, p2_ns, eps, s, mu),
+        "PS": pi1_ns + pi2_ns,
+        "W": total_welfare_NS(p1_ns, p2_ns, eps, s, mu),
+        "Theta": 0,
+        "regime": regime_ns
+    }
+
+    # --- Sharing, rational ---
+    p1_r, p2_r, _ = solve_equilibrium(eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha)
+    pi1_r = profit1(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha)
+    pi2_r = profit2(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha)
+
+    Theta_r = Theta_star(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha)
+    regime_r = classify_regime(p1_r, p2_r, eps, s)
+
+    results["Full model (γ=0)"] = {
+        "p1": p1_r,
+        "p2": p2_r,
+        "pi1": pi1_r,
+        "pi2": pi2_r,
+        "CS": consumer_surplus(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha),
+        "PS": pi1_r + pi2_r,
+        "W": total_welfare(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha),
+        "Theta": Theta_r,
+        "regime": regime_r
+    }
+
+    # --- Sharing, naive ---
+    p1_n, p2_n, _ = solve_equilibrium(eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha)
+    pi1_n = profit1(p1_n, p2_n, eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha)
+    pi2_n = profit2(p1_n, p2_n, eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha)
+    Theta_n = Theta_star(p1_n, p2_n, eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha)
+    regime_n = classify_regime(p1_n, p2_n, eps, s)
+
+    results["Full model (γ=0.4)"] = {
+        "p1": p1_n,
+        "p2": p2_n,
+        "pi1": pi1_n,
+        "pi2": pi2_n,
+        "CS": consumer_surplus(p1_n, p2_n, eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha),
+        "PS": pi1_n + pi2_n,
+        "W": total_welfare(p1_n, p2_n, eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha),
+        "Theta": Theta_n,
+        "regime": regime_n
+    }
+
     return pd.DataFrame(results).T
 
 def plot_welfare_comparison(df):
