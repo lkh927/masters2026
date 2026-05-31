@@ -968,63 +968,179 @@ def plot_prices_gamma(cases, gamma_grid, mu, sigma, alpha, p1_init=0.5, p2_init=
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.set_ylim(0.2,1)
+        ax.set_ylim(0.4,0.7)
 
     lines1, labels1 = axes[0].get_legend_handles_labels()
     fig.legend(lines1, labels1, loc='upper center', ncol=2, frameon=False)
     plt.tight_layout(rect=[0,0,1,0.92])
     plt.show()
 
-def plot_welfare_gamma(cases, gamma_grid, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
-    fig, axes = plt.subplots(1,2,figsize=(10,4),sharex=True)
+def plot_demand_gamma(eps, s, gamma_grid, mu, sigma, alpha,
+                      p1_init=0.5, p2_init=0.5):
 
-    for i, case in enumerate(cases):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True)
+    colors = ["#c7d9f2", "#7ea6e0", "#2f5aa8"]
+
+    for i, firm in enumerate([1, 2]):
+
         ax = axes[i]
-        eps, s = case
+
         p1_curr, p2_curr = p1_init, p2_init
-        CS_list, PS_list, W_list, theta_list = [], [], [], []
+        imm_list, search_list, return_list = [], [], []
         regimes = []
 
         for gamma in gamma_grid:
-            p1, p2, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha, p1_init=p1_curr,p2_init=p2_curr)
-            # warm start update
+
+            p1, p2, _ = solve_equilibrium(
+                eps, s, gamma, mu, sigma, alpha,
+                p1_init=p1_curr,
+                p2_init=p2_curr
+            )
+
             p1_curr, p2_curr = p1, p2
 
-            Theta = Theta_star(p1, p2, eps, s, gamma, mu, sigma, alpha)
-            regime = classify_regime(p1, p2, eps, s)
-            CS = consumer_surplus(p1, p2, eps, s, gamma, mu, sigma, alpha)
-            PS = producer_surplus(p1, p2, eps, s, gamma, mu, sigma, alpha)
-            W = CS + PS
+            if firm == 1:
+                imm, search, ret = demand_components_1(
+                    p1, p2, eps, s, gamma, mu, sigma, alpha
+                )
+            else:
+                imm, search, ret = demand_components_2(
+                    p1, p2, eps, s, gamma, mu, sigma, alpha
+                )
 
-            CS_list.append(CS)
-            PS_list.append(PS)
-            W_list.append(W)
+            regime = classify_regime(p1, p2, eps, s)
+
+            imm_list.append(imm)
+            search_list.append(search)
+            return_list.append(ret)
             regimes.append(regime)
-            theta_list.append(Theta)
 
         # regime boundaries
         for j in range(1, len(gamma_grid)):
-            if regimes[j] != regimes[j-1]:
-                boundary = 0.5 * (gamma_grid[j] + gamma_grid[j-1])
-                ax.axvline(boundary, color='black',linestyle='--', alpha=0.5)
+            if regimes[j] != regimes[j - 1]:
+                boundary = 0.5 * (gamma_grid[j] + gamma_grid[j - 1])
+                ax.axvline(
+                    boundary,
+                    color='black',
+                    linestyle='--',
+                    alpha=0.5
+                )
 
-        ax.plot(gamma_grid, CS_list, label="CS", color="slateblue", linewidth=2)
-        ax.plot(gamma_grid, PS_list, label="PS", color="royalblue", linewidth=2)
-        ax.plot(gamma_grid, W_list, label="W", color="indigo", linewidth=2)
-        ax.plot(gamma_grid, theta_list, label=r"$\Theta^*$", color="cornflowerblue", linestyle='--', linewidth=1)
-        ax.set_title(rf"$\epsilon$={eps}, $s$={s}")
+        ax.stackplot(
+            gamma_grid,
+            imm_list,
+            search_list,
+            return_list,
+            labels=[
+                "Immediate purchase",
+                "Search then purchase",
+                "Return demand"
+            ],
+            colors=colors,
+            alpha=0.95
+        )
+
         ax.set_xlabel(r"$\gamma$")
-        ax.set_ylabel("Welfare")
-        ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.set_ylim(0,1.2)
 
-    lines1, labels1 = axes[0].get_legend_handles_labels()
-    fig.legend(lines1, labels1, loc='upper center', ncol=4, frameon=False)
-    plt.tight_layout(rect=[0,0,1,0.92])
+        # subplot titles
+        if firm == 1:
+            ax.set_title("Firm 1")
+        else:
+            ax.set_title("Firm 2")
+
+    axes[0].set_ylabel("Demand")
+
+    # shared legend
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        loc='upper center',
+        bbox_to_anchor=(0.5, 0.99),
+        ncol=3,
+        frameon=False
+    )
+
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
     plt.show()
 
+def plot_welfare_gamma(eps, s, gamma_grid, mu, sigma, alpha,
+                       p1_init=0.5, p2_init=0.5):
+
+    fig, ax = plt.subplots(figsize=(6,4))
+
+    p1_curr, p2_curr = p1_init, p2_init
+
+    CS_list, PS_list, W_list = [], [], []
+    theta_s_list, theta_n_list = [], []
+    regimes = []
+
+    for gamma in gamma_grid:
+
+        p1_g, p2_g, _ = solve_equilibrium(eps, s, gamma, mu, sigma, alpha, p1_init=p1_curr, p2_init=p2_curr)
+
+        # warm start update
+        p1_curr, p2_curr = p1_g, p2_g
+        Theta_n = gamma * (
+            mu * theta_naive_1(p1_g, p2_g, eps, s, sigma, alpha)
+            + (1 - mu) * theta_naive_2(p1_g, p2_g, eps, s, sigma, alpha))
+        Theta_s = (1 - gamma) * (mu * theta_soph_1(p1_g, p2_g, eps, s, sigma)
+            + (1 - mu) * theta_soph_2(p1_g, p2_g, eps, s, sigma))
+        regime = classify_regime(p1_g, p2_g, eps, s)
+
+        CS = consumer_surplus(p1_g, p2_g, eps, s, gamma, mu, sigma, alpha)
+        PS = producer_surplus(p1_g, p2_g, eps, s, gamma=gamma, mu=mu, sigma=sigma, alpha=alpha)
+        W = CS + PS
+
+        CS_list.append(CS)
+        PS_list.append(PS)
+        W_list.append(W)
+
+        theta_s_list.append(Theta_s)
+        theta_n_list.append(Theta_n)
+
+        regimes.append(regime)
+
+    # regime boundaries
+    for j in range(1, len(gamma_grid)):
+        if regimes[j] != regimes[j-1]:
+            boundary = 0.5 * (gamma_grid[j] + gamma_grid[j-1])
+            ax.axvline(
+                boundary,
+                color='black',
+                linestyle='--',
+                alpha=0.5
+            )
+
+    # welfare curves
+    ax.plot(gamma_grid, CS_list, label="CS", color="slateblue", linewidth=2)
+    ax.plot(gamma_grid, PS_list, label="PS", color="royalblue", linewidth=2)
+    ax.plot(gamma_grid, W_list, label="W", color="indigo", linewidth=2)
+    ax.set_xlabel(r"$\gamma$")
+    ax.set_ylabel("Welfare")
+    ax.set_ylim(0, 1)
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # disclosure axis
+    ax2 = ax.twinx()
+    ax2.plot(gamma_grid, theta_s_list, label=r"$\Theta^{*n}$ (sophisticated share)", color="mediumblue", linestyle='--', linewidth=1)
+    ax2.plot(gamma_grid, theta_n_list, label=r"$\Theta^{*n}$ (naïve share)", color="mediumpurple", linestyle='--', linewidth=1)
+    ax2.set_ylim(0, 1)
+    ax2.set_ylabel("Disclosure share")
+
+    # combined legend
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+
+    fig.legend(lines1 + lines2, labels1 + labels2, loc='upper center', bbox_to_anchor=(0.5, 1.02), ncol=5,frameon=False)
+    plt.tight_layout(rect=[0, 0, 1, 0.90])
+    plt.show()
 
 def plot_profit_gamma(cases, gamma_grid, mu, sigma, alpha, p1_init=0.5, p2_init=0.5):
     fig, axes = plt.subplots(1,2,figsize=(10,4),sharex=True)
@@ -1063,11 +1179,11 @@ def plot_profit_gamma(cases, gamma_grid, mu, sigma, alpha, p1_init=0.5, p2_init=
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.set_ylim(0,0.5)
+        ax.set_ylim(0.1,0.4)
 
     lines1, labels1 = axes[0].get_legend_handles_labels()
     fig.legend(lines1, labels1, loc='upper center', ncol=4, frameon=False)
-    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.tight_layout(rect=[0,0,1,0.72])
     plt.show()
 
 ###### NO SHARING VERSION OF THE MODEL #######
@@ -1319,7 +1435,7 @@ def compare_outcomes(eps, s, mu, sigma, alpha):
         "pi1": pi1_r,
         "pi2": pi2_r,
         "CS": consumer_surplus(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha),
-        "PS": pi1_r + pi2_r,
+        "PS": producer_surplus(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha),
         "W": total_welfare(p1_r, p2_r, eps, s, gamma=0, mu=mu, sigma=sigma, alpha=alpha),
         "Theta": Theta_r,
         "regime": regime_r
@@ -1338,7 +1454,7 @@ def compare_outcomes(eps, s, mu, sigma, alpha):
         "pi1": pi1_n,
         "pi2": pi2_n,
         "CS": consumer_surplus(p1_n, p2_n, eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha),
-        "PS": pi1_n + pi2_n,
+        "PS": producer_surplus(p1_n, p2_n, eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha),
         "W": total_welfare(p1_n, p2_n, eps, s, gamma=0.4, mu=mu, sigma=sigma, alpha=alpha),
         "Theta": Theta_n,
         "regime": regime_n
